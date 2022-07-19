@@ -1,0 +1,48 @@
+Training black-box model:  RandomForestClassifier(min_samples_split=10, random_state=42)
+Train Accuracy: 0.8727204907161804
+Test Accuracy: 0.8312613956572187
+----------------------------------------------------------
+Training CORELS classifier
+CorelsClassifier ({'c': 0.0001, 'n_iter': 1000000, 'map_type': 'prefix', 'policy': 'lower_bound', 'verbosity': [], 'ablation': 0, 'max_card': 2, 'min_support': 0.05})
+RULELIST:
+if [not age_over_28 && not hourperweek_over_40]:
+  y = False
+else if [not age_over_28 && not fnlwgt_over_117628]:
+  y = False
+else if [edunum_over_13 && marital_marriedcivspouse]:
+  y = True
+else 
+  y = False
+Train Accuracy: 0.8152768567639257
+Test Accuracy: 0.8176694845019061
+----------------------------------------------------------
+Training HybridCORELS classifier - Beta = 0.050
+Hybrid model created!
+Fitting the interpretable part...
+Fitting the black-box part on examples not captured by the interpretable part...
+HybridCORELSClassifier
+if [marital_nervermarried && not edunum_over_13]:
+  y = False(support 5980, accuracy 0.981)
+else 
+    default: RandomForestClassifier(min_samples_split=10, random_state=42)(support 18148, accuracy 0.837)
+Train Accuracy: 0.8730106100795756
+Test Accuracy: 0.8292723354881485
+5980 train examples classified by interpretable part, 18148 by black-box part.
+----------------------------------------------------------
+Training HybridCORELS classifier - Beta = 0.400
+Hybrid model created!
+Fitting the interpretable part...
+Fitting the black-box part on examples not captured by the interpretable part...
+HybridCORELSClassifier
+if [marital_nervermarried && not age_over_28]:
+  y = False(support 4564, accuracy 0.989)
+else if [marital_nervermarried && occupation_otherservice]:
+  y = False(support 413, accuracy 0.988)
+else if [not edunum_over_13]:
+  y = False(support 13864, accuracy 0.783)
+else 
+    default: RandomForestClassifier(min_samples_split=10, random_state=42)(support 5287, accuracy 0.824)
+Train Accuracy: 0.834300397877984
+Test Accuracy: 0.8188297696005304
+18841 train examples classified by interpretable part, 5287 by black-box part.
+----------------------------------------------------------

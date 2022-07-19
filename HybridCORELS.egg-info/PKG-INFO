@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: HybridCORELS
+Version: 0.1
+Summary: Python module for Hybrid Rule Lists/Black-Box models, based on the Python binding of the CORELS algorithm
+Home-page: https://github.com/fingoldin/pycorels
+Author: Elaine Angelino, Nicholas Larus-Stone, Hongyu Yang, Cythnia Rudin, Vassilios Kaxiras, Margo Seltzer
+Author-email: vassilioskaxiras@gmail.com
+License: GNU General Public License v3 (GPLv3)
+Platform: UNKNOWN
+Classifier: Programming Language :: C++
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Requires-Python: >=2.7
+License-File: LICENSE
+
+## Python Module for Learning Hybrid Interpretable (Rule-Based) & Black Box models
+
+<p align = "center"><img src = "./example_HybridCORELS_model_MLP_2.png"></p><p align = "center">
+Example Hybrid Model learnt on the COMPAS dataset using HybridCORELS along with a standard sklearn MLPClassifier as black-box model.
+</p>
+
+

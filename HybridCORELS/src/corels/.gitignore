@@ -1,0 +1,50 @@
+# C and C++ extensions
+*.so
+*.o
+
+# Temp files
+*.swp
+*.swo
+*~
+*.dSYM/
+data/*.csv
+data/*.out
+data/*.label
+data/*.gz
+data/*.minor
+
+# GNUmakefile deps
+src/.deps/*
+src/corels
+
+# OS Generated files
+.DS_Store*
+
+# Ctags
+src/tags
+
+# Specific to bbcache
+logs/*
+!logs/README.txt
+
+*~
+
+## GNU global
+GPATH
+GRTAGS
+GTAGS
+
+##
+R/local/
+
+*.pyc
+python/build/
+python/dist/
+corels.egg-info/
+__pycache__/
+*.pyd
+MANIFEST
+.eggs/
+python/env/
+
+tests/tests
