@@ -23,18 +23,49 @@ class Coverage:
     covered: np.array   # Which instance are covered by R+ U R- ?
 
 
-class hyb(object):
-    def __init__(self, binary_data, Y, bb_model, alpha=1, beta=0.1):
-        self.df = binary_data
-        self.bb_model = bb_model
-        self.Y = Y
-        self.N = float(len(Y))
-        self.Yb = bb_model.predict(binary_data)
+class HybridRuleSetClassifier(object):
+    def __init__(self, black_box_classifier, min_support=5, max_card=2, n_rules=5000, T0=0.01, alpha=1, beta=0.1):
+        """Hybrid Rule Set/Black-box based classifier.
+
+        This class implements an Hybrid interpretable/black-box model.
+        It considers that the black-box model has already been fitted and then fits a ruleset on top of
+        it in order to gain free transparency. At inference, instances covered by the rules are labeled
+        according to those rules while instances not covered are send to the black box for prediction.
+
+        Attributes
+        ----------
+
+        black_box_classifier: already fitted classifier
+
+        min_support: minimal support of the rules (in %)
+
+        max_card: maximal cardinality of the rules
+
+        n_rules: number of rules in the rule-space to consider
+
+        T0 : initital temperature used for the local search
+
+        alpha: coefficient to weight the Interpretability term in the objective
+
+        beta: coefficient to weight the Coverage term in the objective
+
+        References
+        ----------
+        Wang, T. (2019, May). Gaining free or low-cost interpretability with interpretable 
+        partial substitute. In International Conference on Machine Learning 
+        (pp. 6505-6514). PMLR.
+        """
+
+        self.min_support = min_support
+        self.max_card = max_card
+        self.n_rules = n_rules
+        self.black_box_classifier = black_box_classifier
+        self.T0 = T0
         self.alpha = alpha
         self.beta = beta
 
 
-    def generate_rulespace(self, supp, maxlen, N, need_negcode = False, method = 'fpgrowth'):
+    def __generate_rulespace(self, need_negcode=False, method='fpgrowth', random_state=42):
         if method == 'fpgrowth': # generate rules with fpgrowth
             if need_negcode:
                 df = 1-self.df 
@@ -52,29 +83,29 @@ class hyb(object):
         else: # if you cannot install the package fim, then use random forest to generate rules
             print('Using random forest to generate rules ...')
             prules = []
-            for length in range(2, maxlen + 1, 1):
+            for length in range(2, self.max_card, 1):
                 n_estimators = 250 * length
-                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=42)
+                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=random_state)
                 clf.fit(self.df, self.Y)
                 for n in range(n_estimators):
                     prules.extend(extract_rules(clf.estimators_[n], self.df.columns))
-            prules = [list(x) for x in set(tuple(np.sort(x)) for x in prules)]
+            #prules = [list(x) for x in set(tuple(np.sort(x)) for x in prules)]
             nrules = []
-            for length in range(2,maxlen+1,1):
+            for length in range(2, self.max_card, 1):
                 n_estimators = 250 * length# min(5000,int(min(comb(df.shape[1], length, exact=True),10000/maxlen)))
-                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=42)
+                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=random_state)
                 clf.fit(self.df, 1 - self.Y)
                 for n in range(n_estimators):
                     nrules.extend(extract_rules(clf.estimators_[n], self.df.columns))
-            nrules = [list(x) for x in set(tuple(np.sort(x)) for x in nrules)]   
+            #nrules = [list(x) for x in set(tuple(np.sort(x)) for x in nrules)]   
             df = 1 - self.df 
             df.columns = [name.strip() + 'neg' for name in self.df.columns]
             df = pd.concat([self.df, df], axis=1)
-        self.prules, self.pRMatrix, self.psupp, self.pprecision, self.perror = self.screen_rules(prules, df, self.Y, N, supp)
-        self.nrules, self.nRMatrix, self.nsupp, self.nprecision, self.nerror = self.screen_rules(nrules, df, 1-self.Y, N, supp)
+        self.prules, self.pRMatrix = self.__screen_rules(prules, df, self.Y)
+        self.nrules, self.nRMatrix = self.__screen_rules(nrules, df, 1-self.Y)
 
 
-    def screen_rules(self, rules, df, y, N, supp, criteria='precision'):
+    def __screen_rules(self, rules, df, y, criteria='precision'):
         # Store rules in a sparse matrix
         itemInd = {}
         for i, name in enumerate(df.columns):
@@ -90,39 +121,61 @@ class hyb(object):
         # mat = sparse.csr_matrix.dot(df,ruleMatrix)
         # Multiply by the binarized data matrix to see which rules cover which instance
         mat = np.matrix(df) * ruleMatrix
-        lenMatrix = np.matrix([len_rules for i in range(df.shape[0])])
+        lenMatrix = np.matrix([len_rules for _ in range(df.shape[0])])
         Z = (mat == lenMatrix).astype(int) # (n_instances, n_rules) binary matrix of cover(R_j, x_i)
         Z_support = np.array(np.sum(Z, axis=0))[0] # Number of instances covered by each rule
 
         # Compute the precision of each rule
         Zpos = Z[y>0]
         TP = np.array(np.sum(Zpos, axis=0))[0]
-        supp_select = np.where(TP >= supp*sum(y)/100)[0] # Not sure what is going on !!!???
+        supp_select = np.where(TP >= self.min_support*sum(y)/100)[0] # Not sure what is going on !!!???
         FP = Z_support - TP
-        precision = TP.astype(float)/(TP + FP)
+        precision = TP.astype(float) / (TP + FP)
 
         # Select N rules with highest precision
         supp_select = supp_select[precision[supp_select] > np.mean(y)]
-        select = np.argsort(-precision[supp_select])[:N].tolist()
+        select = np.argsort(-precision[supp_select])[:self.n_rules].tolist()
         ind = list(supp_select[select])
         rules = [rules[i] for i in ind]
         RMatrix = np.array(Z[:, ind])
-        #rules_len = [len(set([name.split('_')[0] for name in rule])) for rule in rules]
+
+        return rules, RMatrix
 
 
-        return rules, RMatrix, Z_support[ind], precision[ind], FP[ind]
+    def fit(self, X, y, n_iteration=5000, interpretability='size', print_progress=False, random_state=42):
+        """
+        Build a HyRS from the training set (X, y).
 
+        Parameters
+        ----------
+        X : pd.DataFrame, shape = [n_samples, n_features]
+            The training input samples. All features must be binary.
 
-    def train(self, Niteration=5000, interpretability='size', print_progress=False, random_state=42):
+        y : np.array, shape = [n_samples]
+            The target values for the training input. Must be binary.
+        
+        n_iteration : number of iterations of the local search.
 
+        Returns
+        -------
+        self : obj
+        """
         # Set the seed for reproducability
         np.random.seed(random_state)
         seed(random_state)
+
+        # Store the training data
+        self.df = X
+        self.Y = y
+        self.N = len(y)
+        self.Yb = self.black_box_classifier.predict(X)
+
+        # Generate the space of rules
+        self.__generate_rulespace(method='randomforest', random_state=random_state)
         
         # Setup
         self.maps = []
         int_flag = int(interpretability =='size')
-        T0 = 0.01
         obj_curr = 1000000000
         obj_opt = obj_curr
 
@@ -132,10 +185,10 @@ class hyb(object):
         self.maps.append([-1, obj_curr, prs_curr, nrs_curr]) #[iter, obj, prs, nrs])
 
         # Coverage of P-N rules
-        coverage_curr = self.compute_rules_coverage(prs_curr, nrs_curr)
+        coverage_curr = self.__compute_rules_coverage(prs_curr, nrs_curr)
 
         # Compute the loss function
-        Yhat_curr, TP, FP, TN, FN  = self.compute_loss(coverage_curr)
+        Yhat_curr, TP, FP, TN, FN  = self.__compute_loss(coverage_curr)
 
         # Count the number of features
         nfeatures = len(np.unique([con.split('_')[0] for i in prs_curr for con in self.prules[i]])) + \
@@ -143,45 +196,40 @@ class hyb(object):
 
         # Compute the objective function
         # New objective function
-        o1_curr, o2_curr, o3_curr = self.compute_objective(FN, FP, int_flag, nfeatures, \
+        o1_curr, o2_curr, o3_curr = self.__compute_objective(FN, FP, int_flag, nfeatures, \
                                                             prs_curr, nrs_curr, coverage_curr)
         obj_curr = o1_curr + self.alpha * o2_curr + self.beta * o3_curr
         
 
         # Main Loop
         self.actions = []
-        for iter in tqdm(range(Niteration), disable=print_progress):
+        for iter in tqdm(range(n_iteration), disable=print_progress):
             ## What is this????
             #if iter > 0.75 * Niteration:
             #    prs_curr,nrs_curr,pcovered_curr,ncovered_curr,overlap_curr,covered_curr, Yhat_curr = prs_opt[:],nrs_opt[:],pcovered_opt[:],ncovered_opt[:],overlap_opt[:],covered_opt[:], Yhat_opt[:] 
             
             # Propose new RuleSets
-            prs_new, nrs_new, coverage_new = self.propose_rs(Yhat_curr, prs_curr, nrs_curr, coverage_curr)
+            prs_new, nrs_new, coverage_new = self.__propose_rs(Yhat_curr, prs_curr, nrs_curr, coverage_curr)
     
             # Compute the new loss
-            Yhat_new, TP, FP, TN, FN = self.compute_loss(coverage_new)
+            Yhat_new, TP, FP, TN, FN = self.__compute_loss(coverage_new)
             
             # New number of features
             nfeatures = len(np.unique([con.split('_')[0] for i in prs_new for con in self.prules[i]])) + \
                         len(np.unique([con.split('_')[0] for i in nrs_new for con in self.nrules[i]]))
             
             # New objective function
-            o1_new, o2_new, o3_new = self.compute_objective(FN, FP, int_flag, nfeatures, \
+            o1_new, o2_new, o3_new = self.__compute_objective(FN, FP, int_flag, nfeatures, \
                                                             prs_new, nrs_new, coverage_new)
             obj_new = o1_new + self.alpha * o2_new + self.beta * o3_new
 
             # Decrease Temperature
-            T = T0 ** (iter / Niteration)
+            T = self.T0 ** (iter / n_iteration)
             # Acceptance Probability
             alpha = np.exp(float(obj_curr - obj_new) / T)
 
-            # If ?????
-            #if obj_new < self.maps[-1][1]:
             # We decreased the optimal objective
             if obj_new < obj_opt:
-                #prs_opt, nrs_opt, obj_opt,pcovered_opt,ncovered_opt,overlap_opt,covered_opt, Yhat_opt = \
-                #    prs_new[:],nrs_new[:],obj_new,pcovered_new[:],ncovered_new[:],overlap_new[:],covered_new[:], Yhat_new[:]
-                # Update optimal sol
                 prs_opt = prs_new
                 nrs_opt = nrs_new
                 obj_opt = obj_new
@@ -214,9 +262,11 @@ class hyb(object):
         self.positive_rule_set = prs_opt
         self.negative_rule_set = nrs_opt
 
+        return self
 
 
-    def compute_rules_coverage(self, prs, nrs):
+
+    def __compute_rules_coverage(self, prs, nrs):
         p = np.sum(self.pRMatrix[:, prs], axis=1) > 0  # Is instance i covered by R+ ?
         n = np.sum(self.nRMatrix[:, nrs], axis=1) > 0  # Is instance i covered by R- ?
         overlap = np.multiply(p, n)    # Is instance i covered by both R+ and R- ?
@@ -235,23 +285,23 @@ class hyb(object):
     #     return perror, nerror, oerror, berror
 
 
-    def compute_loss(self, coverage):
+    def __compute_loss(self, coverage):
         # pcovered : is x covered by R+ ?
         # covered : is x covered by R+ U R- ?
         Yhat = np.zeros(int(self.N))
-        Yhat[coverage.pcovered] = 1
+        Yhat[coverage.p] = 1
         Yhat[~coverage.covered] = self.Yb[~coverage.covered]
         TN, FP, FN, TP = confusion_matrix(Yhat, self.Y).ravel()
         return  Yhat, TP, FP, TN, FN
 
 
-    def compute_objective(self, FN, FP, int_flag, nfeatures, prs, nrs, coverage):
+    def __compute_objective(self, FN, FP, int_flag, nfeatures, prs, nrs, coverage):
         return (FN + FP) / self.N, \
                 (int_flag *(len(prs) + len(nrs)) + (1 - int_flag) * nfeatures),\
                 sum(~coverage.covered) / self.N
 
 
-    def propose_rs(self, Yhat, prs, nrs, coverage):# vt, print_message = False):
+    def __propose_rs(self, Yhat, prs, nrs, coverage):# vt, print_message = False):
         # Error because of the interpretable model
         incorr = np.where(Yhat[coverage.covered] != self.Y[coverage.covered])[0]
         # Error because of the blackbox model
@@ -291,13 +341,6 @@ class hyb(object):
         #         move = ['expand']
         #         sign = [int(random()<0.5)]
         else:
-            # if sum(overlapped)/sum(pcovered)>.5 or sum(overlapped)/sum(ncovered)>.5:
-            #     if print_message:
-            #         print(' ===== 3 ===== ')
-            #     # print('4')
-            #     move = ['cut']
-            #     sign = [int(len(prs)>len(nrs))]
-            # else:  
             t = random()
             if t < 1./3: # Try to decrease errors
                 self.actions.append(3)
@@ -351,18 +394,18 @@ class hyb(object):
         #for j in range(len(move)):
         j = 0
         if sign[j] == 1:
-            prs_new = self.action(move[j], 1, ex, prs, Yhat, coverage.pcovered)
+            prs_new = self.__action(move[j], 1, ex, prs, Yhat, coverage.pcovered)
             nrs_new = nrs
         else:
             prs_new = prs
-            nrs_new = self.action(move[j], 0, ex, nrs, Yhat, coverage.ncovered)
+            nrs_new = self.__action(move[j], 0, ex, nrs, Yhat, coverage.ncovered)
 
-        coverage_new = self.compute_rules_coverage(prs_new, nrs_new)
+        coverage_new = self.__compute_rules_coverage(prs_new, nrs_new)
 
         return prs_new, nrs_new, coverage_new
 
 
-    def action(self, move, rs_indicator, ex, rules, Yhat, covered):
+    def __action(self, move, rs_indicator, ex, rules, Yhat, covered):
         RMatrix = self.pRMatrix if rs_indicator else self.nRMatrix
         Y = self.Y if rs_indicator else 1 - self.Y
 
@@ -384,7 +427,7 @@ class hyb(object):
                     Yhat = ((all_sum - np.array(RMatrix[:, rule])) > 0).astype(int)
                     TP, FP, TN, FN = confusion_matrix(Yhat, Y).ravel()
                     p.append(TP.astype(float) / (TP + FP))
-                p = np.exp(-np.array([x - min(p) for x in p]))
+                p = np.exp(np.array([x - min(p) for x in p]))
                 p = np.insert(p, 0, 0)
                 p = np.array(list(accumulate(p)))
                 # Sample rules with Softmax prob based on precision
@@ -397,9 +440,10 @@ class hyb(object):
             # Remove the selected rule
             return_rules = [rule for rule in rules if not rule == cut_rule]
 
-        # WHAT ???!!!
+        # We add a rule to decrease the error
         elif move == 'add' and ex >= 0:
             score_max = -self.N * 10000000
+            # Add a rule with sign consistent with the target to cover the instance
             if self.Y[ex] * rs_indicator + (1 - self.Y[ex]) * (1 - rs_indicator) == 1:
                 # select = list(np.where(RMatrix[ex] & (error +self.alpha*self.N < self.beta * supp))[0]) # fix
                 select = list(np.where(RMatrix[ex])[0])
@@ -456,36 +500,51 @@ class hyb(object):
         return return_rules
 
 
-    def predict(self, df, Y):
+    def predict_with_type(self, X):
+        """
+        Predict classifications of the input samples X, along with a boolean (one per example)
+        indicating whether the example was classified by the interpretable part of the model or not.
 
+        Arguments
+        ---------
+        X : pd.DataFrame, shape = [n_samples, n_features]
+            The training input samples. All features must be binary, and the same
+            as those of the data used to train the model.
+
+        Returns
+        -------
+        p, t : array of shape = [n_samples], array of shape = [n_samples].
+            p: The classifications of the input samples
+            t: The part of the Hybrid model which decided for the classification (1: interpretable part, 0: black-box part).
+        """
         # Black box model
-        Yb = self.bb_model.predict(df)
+        Yb = self.black_box_classifier.predict(X)
 
         prules = [self.prules[i] for i in self.positive_rule_set]
         nrules = [self.nrules[i] for i in self.negative_rule_set]
 
         # if isinstance(self.df, scipy.sparse.csc.csc_matrix)==False:
-        dfn = 1 - df #df has negative associations
-        dfn.columns = [name.strip() + 'neg' for name in df.columns]
-        df_test = pd.concat([df, dfn], axis=1)
+        Xn = 1 - X
+        Xn.columns = [name.strip() + 'neg' for name in X.columns]
+        X_test = pd.concat([X, Xn], axis=1)
 
         # Interpretable model
         if len(prules):
             # Does R+ cover these instances
             p = [[] for _ in prules]
             for i, rule in enumerate(prules):
-                p[i] = (np.sum(df_test[list(rule)], axis=1)==len(rule)).astype(int)
+                p[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
             p = (np.sum(p, axis=0) > 0).astype(int)
         else:
-            p = np.zeros(len(Y))
+            p = np.zeros(len(Yb))
         if len(nrules):
             # Does R- cover these instances
             n = [[] for _ in nrules]
             for i, rule in enumerate(nrules):
-                n[i] = (np.sum(df_test[list(rule)], axis=1)==len(rule)).astype(int)
+                n[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
             n = (np.sum(n, axis=0) > 0).astype(int)
         else:
-            n = np.zeros(len(Y))
+            n = np.zeros(len(Yb))
         pind = list(np.where(p)[0])
         nind = list(np.where(n)[0])
         covered = np.logical_or(p, n)
@@ -495,6 +554,26 @@ class hyb(object):
         Yhat[nind] = 0
         Yhat[pind] = 1
         return Yhat, covered
+
+
+    def predict(self, X):
+        """
+        Predict classifications of the input samples X.
+
+        Arguments
+        ---------
+        X : pd.DataFrame, shape = [n_samples, n_features]
+            The training input samples. All features must be binary, and 
+            must be the same as those of the data used for training.
+
+        Returns
+        -------
+        p : array of shape = [n_samples].
+            The classifications of the input samples.
+        """
+        return self.predict_with_type(X)[0]
+
+
 
 
 def accumulate(iterable, func=operator.add):
