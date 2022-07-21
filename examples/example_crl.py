@@ -7,11 +7,17 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings("ignore")
 
+import argparse
 
+parser = argparse.ArgumentParser()
+ # train data, last column is label
+parser.add_argument("--dataset", type= str, help = 'Dataset name. Options: adult, compas', default = 'compas')
+
+args = parser.parse_args()
 
 random_state_param = 42
 train_proportion = 0.8
-dataset = "compas"
+dataset = args.dataset
 df = pd.read_csv("data/{}.csv".format(dataset), sep = ',')
 X = df.iloc[:, :-1]
 y = np.array(df.iloc[:, -1])
@@ -38,7 +44,7 @@ hyb_model = CRL(bbox, **hparams)
 
 
 # Train the hybrid model
-hyb_model.fit(X_train, y_train, 1000, 0.001, random_state=3, print_progress=True)
+hyb_model.fit(X_train, y_train, 10000, 0.001, random_state=3, print_progress=True)
 
 def process(X, y):
     overall_accuracy, output_rules, _, _, cover_rate = hyb_model.test(X, y)
