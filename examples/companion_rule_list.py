@@ -527,7 +527,7 @@ class CRL(object):
             blx_acc.append(sum(test_Yb[list(blx_cover)]==test_label[list(blx_cover)])/(len(blx_cover)+0.0001))
             # cover rate and accuracy of rules
             test_cover_rate[i] = len(rule_catch)/(test_data.shape[0] + 0.0001)
-            test_acc.append(sum(test_label[rule_catch] == self.chosen[i])/len(rule_catch))
+            test_acc.append(sum(test_label[rule_catch] == self.chosen[i])/ (len(rule_catch)+0.0001))
         
         # the overall accuracy of hybrid models
         test_overall_acc = [sum([test_cover_rate[i]*test_acc[i] for i in range(j+1)])+blx_cover_rate[j]*blx_acc[j] for j in range(len(output_rules))]

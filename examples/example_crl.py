@@ -8,6 +8,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import argparse
+import os
 
 parser = argparse.ArgumentParser()
  # train data, last column is label
@@ -40,14 +41,10 @@ hparams = {
 }
 
 # Define a hybrid model
-hyb_model = CRL(bbox, **hparams)
 
 
-# Train the hybrid model
-hyb_model.fit(X_train, y_train, 10000, 0.001, random_state=3, print_progress=True)
-
-def process(X, y):
-    overall_accuracy, output_rules, _, _, cover_rate = hyb_model.test(X, y)
+def process(model, X, y):
+    overall_accuracy, output_rules, _, _, cover_rate = model.test(X, y)
 
     row_list = []
             
@@ -59,12 +56,34 @@ def process(X, y):
         print("acc:  {}, transp.:  {}".format(str(overall_accuracy[i]), str(cover_rate[i])))
     df_res = pd.DataFrame(row_list)
 
-
-print("===================>> train perfs")
-process(X_train, y_train)
+    return df_res
 
 
-print("===================>> test perfs")
-process(X_test, y_test)
+def sweep(init_temperature):
+    hyb_model = CRL(bbox, **hparams)
+    # Train the hybrid model
+    hyb_model.fit(X_train, y_train, 50000, init_temperature, random_state=3, print_progress=True)
+    #print("===================>> train perfs")
+    #process(hyb_model, X_train, y_train)
+    #print("===================>> test perfs")
+    return process(hyb_model, X_test, y_test)
 
 
+#save direcory
+save_dir = "./results/crl"
+os.makedirs(save_dir, exist_ok=True)
+
+temperatures = np.linspace(0.001, 0.01, num=10)
+
+
+
+df = pd.DataFrame()
+
+for temperature in temperatures:
+    print("===================>> temperatures {}".format(temperature))
+    df = pd.concat([df, sweep(temperature)])
+
+
+filename = '{}/{}.csv'.format(save_dir, args.dataset)
+
+df.to_csv(filename, encoding='utf-8', index=False)
