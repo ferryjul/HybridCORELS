@@ -123,6 +123,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
             //if (lower_bound - lower_bound_manual > 0.00001 or lower_bound_manual - lower_bound > 0.00001){
             //    printf("error!");
             //}
+            // Right below occurs the new (tighter) bound computation
             lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
         }
         //equivalent_minority = 0;
