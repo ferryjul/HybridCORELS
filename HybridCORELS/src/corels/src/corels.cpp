@@ -30,7 +30,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         VECTOR parent_not_captured, Queue* q, PermutationMap* p) {
     VECTOR captured, captured_zeros, not_captured, not_captured_zeros, not_captured_equivalent;
     int num_captured, c0, c1, captured_correct;
-    int num_not_captured, d0, d1, default_correct, num_not_captured_equivalent;
+    int num_not_captured, d0, d1, default_correct, num_not_captured_equivalent, parent_errors;
     bool prediction, default_prediction;
     double lower_bound, objective, parent_lower_bound, lookahead_bound;
     double rule_accuracy; // Hybrid model addition
@@ -51,6 +51,11 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
     len_prefix = parent->depth() + 1;
     parent_lower_bound = parent->lower_bound();
     parent_equivalent_minority = parent->equivalent_minority();
+    if(parent->depth() == 0){
+        parent_errors = 0;
+    } else {
+        parent_errors = parent->get_prefix_errors();
+    }
     std::set<std::string> verbosity = logger->getVerbosity();
     double t0 = timestamp();
     for (i = 1; i < nrules; i++) {
@@ -78,7 +83,15 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         // subtract off parent equivalent points bound because we want to use pure lower bound from parent
         rule_support = num_captured; // Hybrid model addition
         rule_accuracy = (double)((double)captured_correct/(double)num_captured); // Hybrid model addition
-        lower_bound = parent_lower_bound - parent_equivalent_minority + (double)(num_captured - captured_correct) / nsamples + c;
+        
+        //double parent_equivalent_minority_num = (parent_equivalent_minority * (double)nsamples);
+        //double parent_errors = (parent_lower_bound - ((len_prefix-1) * c))*(nsamples-parent_equivalent_minority_num);
+        int n_errors_overall = parent_errors + (num_captured - captured_correct);
+        //std::cout << "parent_equivalent_minority_num = " << parent_equivalent_minority_num << ", " << "parent_errors = " << parent_errors << ", n_errors_overall = " << n_errors_overall << std::endl;
+        //lower_bound = parent_lower_bound - parent_equivalent_minority + (double)(num_captured - captured_correct) / nsamples + c;
+        lower_bound = ((double)n_errors_overall/(double) (nsamples)) + (len_prefix * c);
+        //double error_only = (lower_bound - (len_prefix * c));
+        //double n_errors_overall = error_only * nsamples;
         logger->addToLowerBoundTime(time_diff(t1));
         logger->incLowerBoundNum();
         if (lower_bound >= tree->min_objective()) // hierarchical objective lower bound
@@ -96,19 +109,23 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         }
         // Hybrid model addition: don't consider the default decision
         //objective = lower_bound + beta*(double)((double)num_not_captured/(double)nsamples); // (double)(num_not_captured - default_correct) / nsamples;
-        double error_only = (lower_bound - (len_prefix * c));
-        double n_errors_overall = error_only * nsamples;
-        objective = (n_errors_overall/(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+        objective = ((double)n_errors_overall/(double)(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
         logger->addToObjTime(time_diff(t2));
         logger->incObjNum();
         bool support_ok = ((double)num_not_captured/(double)nsamples) < (1.0 - tree->min_coverage());
         // (**)
-        /*if (tree->has_minority()) { 
+        if (tree->has_minority()) { 
             rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
             equivalent_minority = (double)(num_not_captured_equivalent) / nsamples;
-            lower_bound += equivalent_minority;
-        }*/
-        equivalent_minority = 0;
+            //lower_bound += equivalent_minority;
+            //double lower_bound_manual = (n_errors_overall/(double) nsamples) + (len_prefix * c);
+            // if below: just to check!
+            //if (lower_bound - lower_bound_manual > 0.00001 or lower_bound_manual - lower_bound > 0.00001){
+            //    printf("error!");
+            //}
+            lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
+        }
+        //equivalent_minority = 0;
         if (objective < tree->min_objective() && support_ok) {
             if (verbosity.count("progress")) {
                 printf("min(objective): %1.5f -> %1.5f, length: %d, cache size: %zu, lower bound: %1.5f\n",
@@ -145,6 +162,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
             if (n) {
                 n->set_rule_support(rule_support); // Hybrid model addition
                 n->set_rule_accuracy(rule_accuracy); // Hybrid model addition
+                n->set_prefix_errors(n_errors_overall); // Hybrid model addition
                 double t4 = timestamp();
                 tree->insert(n);
                 logger->incTreeInsertionNum();

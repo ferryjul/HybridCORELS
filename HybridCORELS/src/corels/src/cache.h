@@ -32,7 +32,9 @@ class Node {
     inline int get_rule_support() const; // HybridCORELS addition
     inline void set_rule_support(int rule_support); // HybridCORELS addition
     inline double get_rule_accuracy() const; // HybridCORELS addition
+    inline int get_prefix_errors() const; // HybridCORELS addition
     inline void set_rule_accuracy(double rule_accuracy); // HybridCORELS addition
+    inline void set_prefix_errors(int prefix_errors); // HybridCORELS addition
     // Returns pair of prefixes and predictions for the path from this node to the root
     inline std::pair<tracking_vector<unsigned short, DataStruct::Tree>, tracking_vector<bool, DataStruct::Tree> >
       get_prefix_and_predictions();
@@ -71,8 +73,8 @@ class Node {
     bool deleted_;
     int rule_support_; // HybridCORELS addition
     double rule_accuracy_; // HybridCORELS addition
-
-    friend class CacheTree;
+    int prefix_errors_; // HybridCORELS addition
+    friend class CacheTree; 
 };
 
 class CuriousNode: public Node {
@@ -221,12 +223,20 @@ inline void Node::set_rule_accuracy(double rule_accuracy){ // HybridCORELS addit
     rule_accuracy_ = rule_accuracy;
 }
 
+inline void Node::set_prefix_errors(int prefix_errors){ // HybridCORELS addition
+    prefix_errors_ = prefix_errors;
+}
+
 inline int Node::get_rule_support() const{ // HybridCORELS addition
     return rule_support_;
 }
 
 inline double Node::get_rule_accuracy() const{ // HybridCORELS addition
     return rule_accuracy_;
+}
+
+inline int Node::get_prefix_errors() const{ // HybridCORELS addition
+    return prefix_errors_;
 }
 
 inline std::pair<tracking_vector<unsigned short, DataStruct::Tree>, tracking_vector<bool, DataStruct::Tree> >

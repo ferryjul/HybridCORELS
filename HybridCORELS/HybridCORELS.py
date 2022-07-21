@@ -113,6 +113,8 @@ class HybridCORELSClassifier:
         self.black_box_support = not_captured_indices[0].size # Proportion of training examples falling into the black-box part
         if not_captured_indices[0].size > 0:
             self.black_box_accuracy = self.black_box_part.score(X_not_captured, y_not_captured) # Black-Box accuracy on these examples
+            y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
+            print("majority pred = ", max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts))
         else:
             self.black_box_accuracy = 1.00            
         # Done!
