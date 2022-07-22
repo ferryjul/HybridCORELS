@@ -126,7 +126,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
             // Right below occurs the new (tighter) bound computation
             lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
         }
-        //equivalent_minority = 0;
+        // equivalent_minority = 0;
         if (objective < tree->min_objective() && support_ok) {
             if (verbosity.count("progress")) {
                 printf("min(objective): %1.5f -> %1.5f, length: %d, cache size: %zu, lower bound: %1.5f\n",
