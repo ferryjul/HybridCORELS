@@ -20,6 +20,8 @@ class HybridCORELSClassifier:
 
     alpha: black-box specialization coefficient (used to weight the black-box training set)
 
+    verbosity: as in original CORELS, + "hybrid" to print information regarding the Hybrid model learning framework
+
     References
     ----------
     Original CORELS algorithm: Elaine Angelino, Nicholas Larus-Stone, Daniel Alabi, Margo Seltzer, and Cynthia Rudin.
@@ -30,7 +32,7 @@ class HybridCORELSClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, black_box_classifier=None, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0):
+                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -44,7 +46,7 @@ class HybridCORELSClassifier:
         self.alpha = alpha
         self.min_coverage=min_coverage
         self.interpretable_part = PrefixCorelsClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage)
-        
+        np.random.seed(random_state);
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:
             print("Unspecified black_box_classifier parameter, using sklearn MLPClassifier() for black-box part of the model.")
@@ -55,7 +57,8 @@ class HybridCORELSClassifier:
 
         # Done!
         self.is_fitted = False
-        print("Hybrid model created!")
+        if "hybrid" in self.verbosity:
+            print("Hybrid model created!")
 
     def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False):
         """
@@ -83,7 +86,8 @@ class HybridCORELSClassifier:
         self : obj
         """
         # 1) Fit the interpretable part of the Hybrid model
-        print("Fitting the interpretable part...")
+        if "hybrid" in self.verbosity:
+            print("Fitting the interpretable part...")
         self.interpretable_part.fit(X, y, features, prediction_name)
 
         # 2) Fit the black-box part of the Hybrid model (using examples not determined by the interpretable part)
@@ -91,30 +95,47 @@ class HybridCORELSClassifier:
         interpretable_predictions = self.interpretable_part.predict(X)
         not_captured_indices = np.where(interpretable_predictions == 2)
         captured_indices = np.where(interpretable_predictions < 2)
-        print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
-        print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
-        print("Fitting the black-box part on examples not captured by the interpretable part...")
+        if "hybrid" in self.verbosity:
+            print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
+            print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
+            print("Fitting the black-box part on examples not captured by the interpretable part...")
 
         # Old way: fit black-box only on uncaptured examples only
         X_not_captured = X[not_captured_indices]
         y_not_captured = y[not_captured_indices]
         #self.black_box_part.fit(X_not_captured, y_not_captured)
 
-        # New way: weight training examples
-        # First compute and set the sample weights
-        examples_weights = np.ones(y.shape) # start from the uniform distribution
-        examples_weights[not_captured_indices] = np.exp(self.alpha)
-        examples_weights /= np.sum(examples_weights)
+        if not specialization_auto_tuning:
+            # New way: weight training examples
+            # First compute and set the sample weights
+            examples_weights = np.ones(y.shape) # start from the uniform distribution
+            examples_weights[not_captured_indices] = np.exp(self.alpha)
+            examples_weights /= np.sum(examples_weights)
 
-        # Then train the black-box on its weighted training set
-        self.black_box_part.fit(X, y, sample_weight=examples_weights)
-        
+            # Then train the black-box on its weighted training set
+            self.black_box_part.fit(X, y, sample_weight=examples_weights)
+        else:
+            print("Not implemented yet")
+        '''else:
+            alpha_list = np.arange(0,15,1)
+            np.random.randint(y.shape, replace='False')
+            for alpha_value in alpha_list:
+                # First compute and set the sample weights
+                examples_weights = np.ones(y.shape) # start from the uniform distribution
+                examples_weights[not_captured_indices] = np.exp(self.alpha)
+                examples_weights /= np.sum(examples_weights)
+
+                # Then train the black-box on its weighted training set
+                self.black_box_part.fit(X, y, sample_weight=examples_weights)'''
+                
         # Finally set the black-box metrics
         self.black_box_support = not_captured_indices[0].size # Proportion of training examples falling into the black-box part
         if not_captured_indices[0].size > 0:
             self.black_box_accuracy = self.black_box_part.score(X_not_captured, y_not_captured) # Black-Box accuracy on these examples
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
-            print("majority pred = ", max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts))
+            self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
+            if "hybrid" in self.verbosity:
+                print("majority pred = ", self.black_box_majority)
         else:
             self.black_box_accuracy = 1.00            
         # Done!
@@ -220,7 +241,7 @@ class HybridCORELSClassifier:
 
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
-            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f)" %(self.black_box_support, self.black_box_accuracy)
+            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
         else:
             s += "Not Fitted Yet!"
             
