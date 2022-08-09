@@ -18,6 +18,11 @@ Queue::~Queue() {
         delete q_;
 }
 
+int* inconsistent_groups_indices;
+int* inconsistent_groups_min_card;
+int* inconsistent_groups_max_card;
+int nb_incons_groups;
+
 /*
  * Performs incremental computation on a node, evaluating the bounds and inserting into the cache,
  * queue, and permutation map if appropriate.
@@ -115,16 +120,33 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         bool support_ok = ((double)num_not_captured/(double)nsamples) < (1.0 - tree->min_coverage());
         // (**)
         if (tree->has_minority()) { 
-            rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
-            equivalent_minority = (double)(num_not_captured_equivalent) / nsamples;
-            //lower_bound += equivalent_minority;
-            //double lower_bound_manual = (n_errors_overall/(double) nsamples) + (len_prefix * c);
-            // if below: just to check!
-            //if (lower_bound - lower_bound_manual > 0.00001 or lower_bound_manual - lower_bound > 0.00001){
-            //    printf("error!");
-            //}
-            // Right below occurs the new (tighter) bound computation
-            lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
+            
+            // Tight bound:
+            if (inconsistent_groups_indices != NULL){
+                int minority_to_capture = 0;
+                int total_incons_to_capture = 0;
+                double current_error_rate = (double)n_errors_overall/(double)(nsamples - num_not_captured);
+                for(int i = 0; i < nb_incons_groups; i++){
+                    if(rule_isset(not_captured, inconsistent_groups_indices[i], tree->nsamples())){ // incons group i not captured by prefix
+                        if((double) inconsistent_groups_min_card[i]/ (double) (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) <= current_error_rate){ // and capturing it could improve objective function (lower error rate)
+                            minority_to_capture += inconsistent_groups_min_card[i];
+                            total_incons_to_capture+=(inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]);
+                            //std::cout << "Current error rate = " << current_error_rate << ", incons min = " << inconsistent_groups_min_card[i] << "/" << (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) << std::endl;
+                        }
+                     
+                    }
+                }
+                lower_bound = ((double)(n_errors_overall+minority_to_capture)/(double) (nsamples-(num_not_captured - total_incons_to_capture))) + (len_prefix * c);
+            } else {
+                // Tighter (but not tight) computation
+                rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
+                // Right below occurs the new (tighter) bound computation
+                lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
+                // (it considers that in the best case we can never classify correctly more than all equivalent majorities of inconsistent groups)
+                // (and ignores minority for error computation for simplicity (or else, for the LB to be valid we should choose which groups to consider))
+                // (as done in the above, tight computation)
+            }
+            
         }
         // equivalent_minority = 0;
         if (objective < tree->min_objective() && support_ok) {
@@ -207,7 +229,8 @@ static double start = 0.0;
  * Explores the search space by using a queue to order the search process.
  * The queue can be ordered by DFS, BFS, or an alternative priority metric (e.g. lower bound).
  */
-void bbound_begin(CacheTree* tree, Queue* q) {
+void bbound_begin(CacheTree* tree, Queue* q, int* inconsistent_groups_indices_c, 
+                  int* inconsistent_groups_min_card_c, int* inconsistent_groups_max_card_c, int nb_incons_groups_c) {
     start = timestamp();
     num_iter = 0;
     rule_vinit(tree->nsamples(), &captured);
@@ -226,6 +249,10 @@ void bbound_begin(CacheTree* tree, Queue* q) {
     logger->incPrefixLen(0);
     // log record for empty rule list
     logger->dumpState();
+    inconsistent_groups_indices = inconsistent_groups_indices_c;
+    inconsistent_groups_min_card = inconsistent_groups_min_card_c;
+    inconsistent_groups_max_card = inconsistent_groups_max_card_c;
+    nb_incons_groups = nb_incons_groups_c;
 }
 
 void bbound_loop(CacheTree* tree, Queue* q, PermutationMap* p) {

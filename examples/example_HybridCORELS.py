@@ -32,7 +32,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_
 
 #min_support=0.05, max_card=2, alpha=0.001
 # Set parameters
-corels_params = {'policy':"objective", 'max_card':2, 'c':0.0001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress"]} #"progress"
+corels_params = {'policy':"objective", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress"]} #"progress"
 bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
 
 
@@ -59,7 +59,7 @@ def process(model, X, y):
 
 
 def sweep(min_coverage):
-    hyb_model = HybridCORELSClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, **corels_params)#"progress"
+    hyb_model = HybridCORELSClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
     # Train the hybrid model
     hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
     #print("===================>> train perfs")
@@ -73,7 +73,7 @@ def sweep(min_coverage):
 save_dir = "./results/hycorels"
 os.makedirs(save_dir, exist_ok=True)
 
-min_coverages = np.linspace(0.40, 0.99, num=20)
+min_coverages = [0.8] # np.linspace(0.40, 0.99, num=20)
 
 
 

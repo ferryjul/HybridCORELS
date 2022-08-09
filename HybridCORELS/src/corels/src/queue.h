@@ -107,7 +107,8 @@ class Queue {
         char const *type_;
 };
 
-extern void bbound_begin(CacheTree* tree, Queue* q);
+extern void bbound_begin(CacheTree* tree, Queue* q, int* inconsistent_groups_indices_c, 
+                  int* inconsistent_groups_min_card_c, int* inconsistent_groups_max_card_c, int nb_incons_groups_c);
 extern void bbound_loop(CacheTree* tree, Queue* q, PermutationMap* p);
 extern int bbound_end(CacheTree* tree, Queue* q, PermutationMap* p, bool early);//, rule_t* rules, rule_t* labels);
 

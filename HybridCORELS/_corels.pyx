@@ -34,7 +34,8 @@ cdef extern from "src/corels/src/run.h":
                       int map_type, int ablation, int calculate_size, int nrules, int nlabels,
                       int nsamples, rule_t* rules, rule_t* labels, rule_t* meta, int freq, char* log_fname,
                       PermutationMap*& pmap, CacheTree*& tree, Queue*& queue, double& init,
-                      set[string]& verbosity, double beta, double min_coverage)
+                      set[string]& verbosity, double beta, double min_coverage, int* inconsistent_groups_indices_c, 
+                      int* inconsistent_groups_min_card_c, int* inconsistent_groups_max_card_c, int nb_incons_groups_c)
 
     int run_corels_loop(size_t max_num_nodes, PermutationMap* pmap, CacheTree* tree, Queue* queue)
 
@@ -243,18 +244,45 @@ cdef Queue* queue = NULL
 cdef double init = 0.0
 cdef set[string] run_verbosity
 
+cdef int* inconsistent_groups_indices_c 
+cdef int* inconsistent_groups_min_card_c
+cdef int* inconsistent_groups_max_card_c
+
 def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples, 
              np.ndarray[np.uint8_t, ndim=2] labels,
              features, int max_card, double min_support, verbosity_str, int mine_verbose,
              int minor_verbose, double c, int policy, int map_type, int ablation,
-             int calculate_size, double beta, double min_coverage):
+             int calculate_size, double beta, double min_coverage,
+             np.ndarray[np.int64_t, ndim=1] inconsistent_groups_indices, 
+             np.ndarray[np.int64_t, ndim=1] inconsistent_groups_min_card, 
+             np.ndarray[np.int64_t, ndim=1] inconsistent_groups_max_card):
     global rules
     global labels_vecs
     global minor
     global n_rules
+    global inconsistent_groups_indices_c
+    global inconsistent_groups_min_card_c
+    global inconsistent_groups_max_card_c
 
     cdef int nfeatures = 0
     cdef rule_t* samples_vecs = _to_vector(samples, &nfeatures)
+
+    n_incons = inconsistent_groups_indices.size
+    cdef int nb_incons_group_c = n_incons
+
+    if n_incons == 0:
+        inconsistent_groups_indices_c = NULL
+        inconsistent_groups_min_card_c = NULL
+        inconsistent_groups_max_card_c = NULL
+    else:
+        inconsistent_groups_indices_c = <int*>malloc(sizeof(int) * n_incons)
+        inconsistent_groups_min_card_c = <int*>malloc(sizeof(int) * n_incons)
+        inconsistent_groups_max_card_c = <int*>malloc(sizeof(int) * n_incons)
+        for i in range(n_incons):
+            inconsistent_groups_indices_c[i] = inconsistent_groups_indices[i]
+            inconsistent_groups_min_card_c[i] = inconsistent_groups_min_card[i]
+            inconsistent_groups_max_card_c[i] = inconsistent_groups_max_card[i]
+    
 
     nsamples = samples.shape[0]
 
@@ -385,7 +413,8 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
     
     cdef int rb = run_corels_begin(c, verbosity, policy, map_type, ablation, calculate_size,
                    n_rules, 2, nsamples, rules, labels_vecs, minor, 0, NULL, pmap, tree,
-                   queue, init, run_verbosity, beta, min_coverage)
+                   queue, init, run_verbosity, beta, min_coverage,    
+                   inconsistent_groups_indices_c, inconsistent_groups_min_card_c, inconsistent_groups_max_card_c, nb_incons_group_c)
 
     if rb == -1:
         if labels_vecs != NULL:
@@ -418,6 +447,12 @@ def fit_wrap_end(int early):
     cdef vector[int] classes
     cdef vector[int] rules_support # HybridCORELS
     cdef vector[double] rules_accuracy # HybridCORELS
+    if inconsistent_groups_indices_c != NULL:
+        free(inconsistent_groups_indices_c)
+    if inconsistent_groups_min_card_c != NULL:
+        free(inconsistent_groups_min_card_c)
+    if inconsistent_groups_max_card_c != NULL:
+        free(inconsistent_groups_max_card_c)
     run_corels_end(&rulelist, &classes, early, 0, NULL, NULL, NULL, pmap, tree,
                     queue, init, run_verbosity, &rules_support, &rules_accuracy)
 

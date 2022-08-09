@@ -1,6 +1,6 @@
 from __future__ import print_function, division, with_statement
 from ._corels import fit_wrap_begin, fit_wrap_end, fit_wrap_loop, predict_wrap, predict_proba_wrap
-from .utils import check_consistent_length, check_array, check_is_fitted, get_feature, check_in, check_features, check_rulelist, RuleList
+from .utils import check_consistent_length, check_array, check_is_fitted, get_feature, check_in, check_features, check_rulelist, RuleList, compute_inconsistent_groups
 import numpy as np
 import pickle
 import warnings
@@ -70,6 +70,10 @@ class PrefixCorelsClassifier:
         this value is also the maximum fraction of samples a rule can capture.
         Can be any value between 0.0 and 0.5.
 
+    lb_mode : str, optional (default='tight')
+        If 'tight', uses a new (tight) way of computing the lower bound of the B&B algorithm. Else, uses another computation (not tight but simpler).
+
+
     References
     ----------
     Elaine Angelino, Nicholas Larus-Stone, Daniel Alabi, Margo Seltzer, and Cynthia Rudin.
@@ -92,7 +96,7 @@ class PrefixCorelsClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0):
+                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, lb_mode='tight'):
         self.c = c
         self.n_iter = n_iter
         self.map_type = map_type
@@ -103,6 +107,7 @@ class PrefixCorelsClassifier:
         self.min_support = min_support
         self.beta=beta
         self.min_coverage = min_coverage
+        self.lb_mode = lb_mode
 
     def fit(self, X, y, features=[], prediction_name="prediction"):
         """
@@ -169,6 +174,11 @@ class PrefixCorelsClassifier:
 
         n_samples = samples.shape[0]
         n_features = samples.shape[1]
+        if self.lb_mode == 'tight':
+            inconsistent_groups_indices, inconsistent_groups_min_card, inconsistent_groups_max_card = compute_inconsistent_groups(X, y)
+        else:
+            inconsistent_groups_indices, inconsistent_groups_min_card, inconsistent_groups_max_card = np.asarray([]), np.asarray([]), np.asarray([])
+        #print(inconsistent_groups_indices, inconsistent_groups_min_card, inconsistent_groups_max_card)
         if self.max_card > n_features:
             raise ValueError("Max cardinality (" + str(self.max_card) + ") cannot be greater"
                              " than the number of features (" + str(n_features) + ")")
@@ -239,7 +249,10 @@ class PrefixCorelsClassifier:
         fr = fit_wrap_begin(samples.astype(np.uint8, copy=False),
                              labels.astype(np.uint8, copy=False), rl.features,
                              self.max_card, self.min_support, verbose, mine_verbose, minor_verbose,
-                             self.c, policy_id, map_id, self.ablation, False, self.beta, self.min_coverage)
+                             self.c, policy_id, map_id, self.ablation, False, self.beta, self.min_coverage,
+                             inconsistent_groups_indices.astype(np.int64, copy=False), 
+                             inconsistent_groups_min_card.astype(np.int64, copy=False), 
+                             inconsistent_groups_max_card.astype(np.int64, copy=False))
         
         if fr:
             early = False

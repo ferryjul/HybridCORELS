@@ -16,6 +16,9 @@ class HybridCORELSClassifier:
     c, n_iter, map_type, policy, verbosity, ablation, max_card, min_support : arguments of the CORELS algorithm 
     (see CORELS' documentation for details)
 
+    lb_mode : str, optional (default='tight')
+        If 'tight', uses a new (tight) way of computing the lower bound of the B&B algorithm. Else, uses another computation (not tight but simpler).
+
     black_box_classifier: 
 
     alpha: black-box specialization coefficient (used to weight the black-box training set)
@@ -32,7 +35,7 @@ class HybridCORELSClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, black_box_classifier=None, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42):
+                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42, lb_mode='tight'):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -45,7 +48,8 @@ class HybridCORELSClassifier:
         self.beta = beta
         self.alpha = alpha
         self.min_coverage=min_coverage
-        self.interpretable_part = PrefixCorelsClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage)
+        self.lb_mode=lb_mode
+        self.interpretable_part = PrefixCorelsClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage,self.lb_mode)
         np.random.seed(random_state);
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:
