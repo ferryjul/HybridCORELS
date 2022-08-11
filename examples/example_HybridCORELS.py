@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from HybridCORELSPre import *
+from HybridCORELS import *
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
@@ -18,7 +18,7 @@ args = parser.parse_args()
 
 random_state_param = 42
 train_proportion = 0.8
-alpha_value = 5
+alpha_value = 3
 beta_value = 0.0
 dataset = args.dataset
 #df = pd.read_csv("data/{}.csv".format(dataset), sep = ',')
@@ -32,9 +32,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_
 
 #min_support=0.05, max_card=2, alpha=0.001
 # Set parameters
-corels_params = {'policy':"objective", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress"]} #"progress"
+corels_params = {'policy':"objective", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress", "hybrid"]} #"progress"
 bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
-
 
 # Define a hybrid model
 
@@ -59,7 +58,12 @@ def process(model, X, y):
 
 
 def sweep(min_coverage):
-    hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
+    # To use the interp-then-bb-training paradigm:
+    #hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
+    
+    # To use the bb-then-interpr-training paradigm:
+    hyb_model = HybridCORELSPostClassifier(black_box_classifier=bbox, beta=beta_value, min_coverage=min_coverage, bb_pretrained=False, **corels_params)#"progress"
+   
     # Train the hybrid model
     hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
     #print("===================>> train perfs")
@@ -73,7 +77,7 @@ def sweep(min_coverage):
 save_dir = "./results/hycorels"
 os.makedirs(save_dir, exist_ok=True)
 
-min_coverages = [0.99] # np.linspace(0.40, 0.99, num=20)
+min_coverages = [0.9] # np.linspace(0.40, 0.99, num=20)
 
 
 

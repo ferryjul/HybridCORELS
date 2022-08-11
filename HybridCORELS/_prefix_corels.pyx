@@ -32,7 +32,7 @@ cdef extern from "src/corels/src/rule.h":
 cdef extern from "src/corels/src/run.h":
     int run_corels_begin(double c, char* vstring, int curiosity_policy,
                       int map_type, int ablation, int calculate_size, int nrules, int nlabels,
-                      int nsamples, rule_t* rules, rule_t* labels, rule_t* meta, int freq, char* log_fname,
+                      int nsamples, rule_t* rules, rule_t* labels, rule_t* bb_errors, rule_t* meta, int freq, char* log_fname,
                       PermutationMap*& pmap, CacheTree*& tree, Queue*& queue, double& init,
                       set[string]& verbosity, double beta, double min_coverage, int* inconsistent_groups_indices_c, 
                       int* inconsistent_groups_min_card_c, int* inconsistent_groups_max_card_c, int nb_incons_groups_c)
@@ -236,6 +236,7 @@ cdef _free_vector(rule_t* vs, int count):
 
 cdef rule_t* rules = NULL
 cdef rule_t* labels_vecs = NULL
+cdef rule_t* bb_errors_vecs = NULL
 cdef rule_t* minor = NULL
 cdef int n_rules = 0
 cdef PermutationMap* pmap = NULL
@@ -250,7 +251,9 @@ cdef int* inconsistent_groups_max_card_c
 
 def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples, 
              np.ndarray[np.uint8_t, ndim=2] labels,
-             features, int max_card, double min_support, verbosity_str, int mine_verbose,
+             features, 
+             np.ndarray[np.uint8_t, ndim=2] bb_errors,
+             int max_card, double min_support, verbosity_str, int mine_verbose,
              int minor_verbose, double c, int policy, int map_type, int ablation,
              int calculate_size, double beta, double min_coverage,
              np.ndarray[np.int64_t, ndim=1] inconsistent_groups_indices, 
@@ -263,6 +266,26 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
     global inconsistent_groups_indices_c
     global inconsistent_groups_min_card_c
     global inconsistent_groups_max_card_c
+    global bb_errors_vecs
+
+    nsamples = samples.shape[0]
+
+    cdef int nsamples_chk_bb_errors = 0
+    bb_errors_size = bb_errors.size
+    if bb_errors_size == 0:
+        bb_errors_vecs = NULL
+    else:
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
+        try:
+            bb_errors_vecs = _to_vector(bb_errors, &nsamples_chk_bb_errors)
+        except:
+            print("An error occured while allocating memory for the bb errors vector. Exiting!")
+            raise MemoryError()
+        if nsamples_chk_bb_errors != nsamples:
+            print("An error occured while allocating memory for the bb errors vector: sample count mismatch between nsamples = ", nsamples, " and allocated size = ", nsamples_chk_bb_errors)
+            raise MemoryError()
 
     cdef int nfeatures = 0
     cdef rule_t* samples_vecs = _to_vector(samples, &nfeatures)
@@ -283,8 +306,6 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
             inconsistent_groups_min_card_c[i] = inconsistent_groups_min_card[i]
             inconsistent_groups_max_card_c[i] = inconsistent_groups_max_card[i]
     
-
-    nsamples = samples.shape[0]
 
     if nfeatures > len(features):
         if samples_vecs != NULL:
@@ -361,6 +382,9 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
         if rules != NULL:
             _free_vector(rules, n_rules)
             rules = NULL
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
         n_rules = 0
         raise ValueError("Sample count mismatch between label (" + str(nsamples_chk) +
                          ") and rule data (" + str(nsamples) + ")")
@@ -374,6 +398,9 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
         if rules != NULL:
             _free_vector(rules, n_rules)
             rules = NULL
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
         n_rules = 0
         raise MemoryError();
     strcpy(labels_vecs[0].features, "label=0")
@@ -391,6 +418,9 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
         if rules != NULL:
             _free_vector(rules, n_rules)
             rules = NULL
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
         n_rules = 0
         raise MemoryError();
 
@@ -399,6 +429,9 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
         if labels_vecs != NULL:
             _free_vector(labels_vecs, 2)
             labels_vecs = NULL
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
         if rules != NULL:
             _free_vector(rules, n_rules)
             rules = NULL
@@ -412,7 +445,7 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
     """
     
     cdef int rb = run_corels_begin(c, verbosity, policy, map_type, ablation, calculate_size,
-                   n_rules, 2, nsamples, rules, labels_vecs, minor, 0, NULL, pmap, tree,
+                   n_rules, 2, nsamples, rules, labels_vecs, bb_errors_vecs, minor, 0, NULL, pmap, tree,
                    queue, init, run_verbosity, beta, min_coverage,    
                    inconsistent_groups_indices_c, inconsistent_groups_min_card_c, inconsistent_groups_max_card_c, nb_incons_group_c)
 
@@ -420,6 +453,9 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
         if labels_vecs != NULL:
             _free_vector(labels_vecs, 2)
             labels_vecs = NULL
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+            bb_errors_vecs = NULL
         if minor != NULL:
             _free_vector(minor, 1)
             minor = NULL
@@ -442,6 +478,7 @@ def fit_wrap_end(int early):
     global labels_vecs
     global minor
     global n_rules
+    global bb_errors_vecs
 
     cdef vector[int] rulelist
     cdef vector[int] classes
@@ -479,10 +516,13 @@ def fit_wrap_end(int early):
             _free_vector(minor, 1)
         if rules != NULL: 
             _free_vector(rules, n_rules)
-    
+        if bb_errors_vecs != NULL:
+            _free_vector(bb_errors_vecs, 2)
+
     minor = NULL
     rules = NULL
     labels_vecs = NULL
+    bb_errors_vecs = NULL
     n_rules = 0
 
     return r_out

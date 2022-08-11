@@ -22,6 +22,7 @@ int* inconsistent_groups_indices;
 int* inconsistent_groups_min_card;
 int* inconsistent_groups_max_card;
 int nb_incons_groups;
+rule_t* black_box_errors;
 
 /*
  * Performs incremental computation on a node, evaluating the bounds and inserting into the cache,
@@ -33,9 +34,9 @@ int nb_incons_groups;
  */
 void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned short, DataStruct::Tree> parent_prefix,
         VECTOR parent_not_captured, Queue* q, PermutationMap* p) {
-    VECTOR captured, captured_zeros, not_captured, not_captured_zeros, not_captured_equivalent;
+    VECTOR captured, captured_zeros, not_captured, not_captured_zeros, not_captured_equivalent, remaining_black_box_errors;
     int num_captured, c0, c1, captured_correct;
-    int num_not_captured, d0, d1, default_correct, num_not_captured_equivalent, parent_errors;
+    int num_not_captured, d0, d1, default_correct, num_not_captured_equivalent, parent_errors, num_remaining_black_box_errors;
     bool prediction, default_prediction;
     double lower_bound, objective, parent_lower_bound, lookahead_bound;
     double rule_accuracy; // Hybrid model addition
@@ -47,6 +48,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
     double c = tree->c();
     double beta = tree-> beta();
     double threshold = c * nsamples;
+    rule_vinit(nsamples, &remaining_black_box_errors);
     rule_vinit(nsamples, &captured);
     rule_vinit(nsamples, &captured_zeros);
     rule_vinit(nsamples, &not_captured);
@@ -94,7 +96,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         int n_errors_overall = parent_errors + (num_captured - captured_correct);
         //std::cout << "parent_equivalent_minority_num = " << parent_equivalent_minority_num << ", " << "parent_errors = " << parent_errors << ", n_errors_overall = " << n_errors_overall << std::endl;
         //lower_bound = parent_lower_bound - parent_equivalent_minority + (double)(num_captured - captured_correct) / nsamples + c;
-        lower_bound = ((double)n_errors_overall/(double) (nsamples)) + (len_prefix * c);
+        lower_bound = ((double)n_errors_overall/(double) (nsamples)) + (len_prefix * c); // valid for both (but not tight)
         //double error_only = (lower_bound - (len_prefix * c));
         //double n_errors_overall = error_only * nsamples;
         logger->addToLowerBoundTime(time_diff(t1));
@@ -114,37 +116,49 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         }
         // Hybrid model addition: don't consider the default decision
         //objective = lower_bound + beta*(double)((double)num_not_captured/(double)nsamples); // (double)(num_not_captured - default_correct) / nsamples;
-        objective = ((double)n_errors_overall/(double)(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+        
+        if(black_box_errors == nullptr){ // interpr-then-bb-training
+            objective = ((double)n_errors_overall/(double)(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+        } else { // bb-then-interpr-training
+            rule_vand(remaining_black_box_errors, black_box_errors[1].truthtable, not_captured, nsamples, &num_remaining_black_box_errors);
+            objective = (((double) (n_errors_overall + num_remaining_black_box_errors))/(double)(nsamples)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+        }
+        
         logger->addToObjTime(time_diff(t2));
         logger->incObjNum();
         bool support_ok = ((double)num_not_captured/(double)nsamples) < (1.0 - tree->min_coverage());
         // (**)
         if (tree->has_minority()) { 
-            
-            // Tight bound:
-            if (inconsistent_groups_indices != NULL){
-                int minority_to_capture = 0;
-                int total_incons_to_capture = 0;
-                double current_error_rate = (double)n_errors_overall/(double)(nsamples - num_not_captured);
-                for(int i = 0; i < nb_incons_groups; i++){
-                    if(rule_isset(not_captured, inconsistent_groups_indices[i], tree->nsamples())){ // incons group i not captured by prefix
-                        if((double) inconsistent_groups_min_card[i]/ (double) (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) <= current_error_rate){ // and capturing it could improve objective function (lower error rate)
-                            minority_to_capture += inconsistent_groups_min_card[i];
-                            total_incons_to_capture+=(inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]);
-                            //std::cout << "Current error rate = " << current_error_rate << ", incons min = " << inconsistent_groups_min_card[i] << "/" << (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) << std::endl;
+            if(black_box_errors == nullptr){ // interpr-then-bb-training
+                // Tight bound:
+                if (inconsistent_groups_indices != NULL){
+                    int minority_to_capture = 0;
+                    int total_incons_to_capture = 0;
+                    double current_error_rate = (double)n_errors_overall/(double)(nsamples - num_not_captured);
+                    for(int i = 0; i < nb_incons_groups; i++){
+                        if(rule_isset(not_captured, inconsistent_groups_indices[i], tree->nsamples())){ // incons group i not captured by prefix
+                            if((double) inconsistent_groups_min_card[i]/ (double) (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) <= current_error_rate){ // and capturing it could improve objective function (lower error rate)
+                                minority_to_capture += inconsistent_groups_min_card[i];
+                                total_incons_to_capture+=(inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]);
+                                //std::cout << "Current error rate = " << current_error_rate << ", incons min = " << inconsistent_groups_min_card[i] << "/" << (inconsistent_groups_min_card[i]+inconsistent_groups_max_card[i]) << std::endl;
+                            }
+                        
                         }
-                     
                     }
+                    lower_bound = ((double)(n_errors_overall+minority_to_capture)/(double) (nsamples-(num_not_captured - total_incons_to_capture))) + (len_prefix * c);
+                } else {
+                    // Other simpler (but not tight) computation
+                    rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
+                    // Right below occurs the new (tighter) bound computation
+                    lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
+                    // (it considers that in the best case we can never classify correctly more than all equivalent majorities of inconsistent groups)
+                    // (and ignores minority for error computation for simplicity (or else, for the LB to be valid we should choose which groups to consider))
+                    // (as done in the above, tight computation)
                 }
-                lower_bound = ((double)(n_errors_overall+minority_to_capture)/(double) (nsamples-(num_not_captured - total_incons_to_capture))) + (len_prefix * c);
-            } else {
-                // Tighter (but not tight) computation
+            } else { // bb-then-interpr-training
                 rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
-                // Right below occurs the new (tighter) bound computation
-                lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
-                // (it considers that in the best case we can never classify correctly more than all equivalent majorities of inconsistent groups)
-                // (and ignores minority for error computation for simplicity (or else, for the LB to be valid we should choose which groups to consider))
-                // (as done in the above, tight computation)
+                equivalent_minority = (double)(num_not_captured_equivalent) / nsamples;
+                lower_bound += equivalent_minority;
             }
             
         }
@@ -229,7 +243,7 @@ static double start = 0.0;
  * Explores the search space by using a queue to order the search process.
  * The queue can be ordered by DFS, BFS, or an alternative priority metric (e.g. lower bound).
  */
-void bbound_begin(CacheTree* tree, Queue* q, int* inconsistent_groups_indices_c, 
+void bbound_begin(CacheTree* tree, Queue* q, rule_t* bb_errors, int* inconsistent_groups_indices_c, 
                   int* inconsistent_groups_min_card_c, int* inconsistent_groups_max_card_c, int nb_incons_groups_c) {
     start = timestamp();
     num_iter = 0;
@@ -252,6 +266,9 @@ void bbound_begin(CacheTree* tree, Queue* q, int* inconsistent_groups_indices_c,
     inconsistent_groups_indices = inconsistent_groups_indices_c;
     inconsistent_groups_min_card = inconsistent_groups_min_card_c;
     inconsistent_groups_max_card = inconsistent_groups_max_card_c;
+    black_box_errors = bb_errors;
+    //if(black_box_errors != nullptr)
+    //    std::cout << "c++ computed bb error rate = " << (double)count_ones_vector(black_box_errors[1].truthtable, tree->nsamples()) / (double) tree->nsamples() << std::endl;
     nb_incons_groups = nb_incons_groups_c;
 }
 
