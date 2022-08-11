@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from HybridCORELS import *
+from HybridCORELSPre import *
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
@@ -59,7 +59,7 @@ def process(model, X, y):
 
 
 def sweep(min_coverage):
-    hyb_model = HybridCORELSClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
+    hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
     # Train the hybrid model
     hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
     #print("===================>> train perfs")
@@ -73,7 +73,7 @@ def sweep(min_coverage):
 save_dir = "./results/hycorels"
 os.makedirs(save_dir, exist_ok=True)
 
-min_coverages = [0.8] # np.linspace(0.40, 0.99, num=20)
+min_coverages = [0.99] # np.linspace(0.40, 0.99, num=20)
 
 
 

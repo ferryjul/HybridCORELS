@@ -1,8 +1,8 @@
-from .corels import PrefixCorelsClassifier
+from .PrefixCorelsPre import PrefixCorelsPreClassifier
 from .utils import check_consistent_length, check_array, get_feature, check_in, check_features
 import numpy as np
 
-class HybridCORELSClassifier:
+class HybridCORELSPreClassifier:
     """Hybrid Rule List/Black-box based classifier.
 
     This class implements an Hybrid interpretable/black-box model.
@@ -49,8 +49,8 @@ class HybridCORELSClassifier:
         self.alpha = alpha
         self.min_coverage=min_coverage
         self.lb_mode=lb_mode
-        self.interpretable_part = PrefixCorelsClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage,self.lb_mode)
-        np.random.seed(random_state);
+        self.interpretable_part = PrefixCorelsPreClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage,self.lb_mode)
+        np.random.seed(random_state)
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:
             print("Unspecified black_box_classifier parameter, using sklearn MLPClassifier() for black-box part of the model.")
@@ -241,7 +241,7 @@ class HybridCORELSClassifier:
         return overall_predictions, predictions_type
 
     def __str__(self):
-        s = "HybridCORELSClassifier"
+        s = "HybridCORELSPreClassifier"
 
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()

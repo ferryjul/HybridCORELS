@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 import warnings
 
-class PrefixCorelsClassifier:
+class PrefixCorelsPreClassifier:
     """Certifiably Optimal RulE ListS classifier.
 
     This class implements the CORELS algorithm, designed to produce human-interpretable, optimal
@@ -487,7 +487,7 @@ class PrefixCorelsClassifier:
         return self.rl_
     
     def __str__(self):
-        s = "PrefixCorelsClassifier (" + str(self.get_params()) + ")"
+        s = "PrefixCorelsPreClassifier (" + str(self.get_params()) + ")"
 
         if hasattr(self, "rl_"):
             s += "\n" + self.rl_.__str__()
@@ -495,7 +495,7 @@ class PrefixCorelsClassifier:
         return s
     
     def __repr__(self):
-        s = "PrefixCorelsClassifier (" + str(self.get_params()) + ")"
+        s = "PrefixCorelsPreClassifier (" + str(self.get_params()) + ")"
 
         if hasattr(self, "rl_"):
             s += "\n" + self.rl_.__repr__()

@@ -18,12 +18,12 @@ def install(gmp):
     with open('./README.md') as f:
         long_description = f.read()
 
-    with open('HybridCORELS/VERSION') as f:
+    with open('HybridCORELSPre/VERSION') as f:
         version = f.read().strip()
 
-    pyx_file = 'HybridCORELS/_corels.pyx'
+    pyx_file = 'HybridCORELSPre/_corels.pyx'
 
-    source_dir = 'HybridCORELS/src/corels/src/'
+    source_dir = 'HybridCORELSPre/src/corels/src/'
     sources = ['utils.cpp', 'rulelib.cpp', 'run.cpp', 'pmap.cpp', 
                'corels.cpp', 'cache.cpp']
     
@@ -32,7 +32,7 @@ def install(gmp):
     
     #sources.append('corels/_corels.cpp')
     sources.append(pyx_file)
-    sources.append('HybridCORELS/src/utils.cpp')
+    sources.append('HybridCORELSPre/src/utils.cpp')
 
     cpp_args = ['-Wall', '-O3', '-std=c++11']
     libraries = []
@@ -49,10 +49,10 @@ def install(gmp):
         if sys.version_info[0] < 3:
             raise Exception("Python 3.x is required on Windows")
 
-    extension = Extension("HybridCORELS._corels", 
+    extension = Extension("HybridCORELSPre._corels", 
                 sources = sources,
                 libraries = libraries,
-                include_dirs = ['HybridCORELS/src/', 'HybridCORELS/src/corels/src'],
+                include_dirs = ['HybridCORELSPre/src/', 'HybridCORELSPre/src/corels/src'],
                 language = "c++",
                 extra_compile_args = cpp_args)
 
@@ -65,8 +65,8 @@ def install(gmp):
         numpy_version = 'numpy<=1.16'
 
     setup(
-        name = 'HybridCORELS',
-        packages = ['HybridCORELS'],
+        name = 'HybridCORELSPre',
+        packages = ['HybridCORELSPre'],
         ext_modules = extensions,
         version = version,
         author = 'Elaine Angelino, Nicholas Larus-Stone, Hongyu Yang, Cythnia Rudin, Vassilios Kaxiras, Margo Seltzer',
@@ -79,8 +79,8 @@ def install(gmp):
         url = 'https://github.com/fingoldin/pycorels',
         cmdclass = {'build_ext': build_numpy},
         license = "GNU General Public License v3 (GPLv3)",
-        package_dir={'HybridCORELS': 'HybridCORELS'},
-        package_data={'HybridCORELS': ['VERSION']},
+        package_dir={'HybridCORELSPre': 'HybridCORELSPre'},
+        package_data={'HybridCORELSPre': ['VERSION']},
         classifiers = [
             "Programming Language :: C++",
             "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
