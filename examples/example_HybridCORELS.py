@@ -13,7 +13,7 @@ import os
 parser = argparse.ArgumentParser()
  # train data, last column is label
 parser.add_argument("--dataset", type= str, help = 'Dataset name. Options: adult, compas', default = 'compas')
-parser.add_argument("--method", type= str, help = 'pre or post, depending on the chosen paradigm', default = 'compas')
+parser.add_argument("--method", type= str, help = 'pre or post, depending on the chosen paradigm', default = 'pre')
 
 args = parser.parse_args()
 method = args.method
