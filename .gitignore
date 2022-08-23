@@ -1,3 +1,4 @@
 .DS_Store
 examples/__pycache__/
 analysis/__pycache__/
+examples/local_config.py

@@ -291,6 +291,12 @@ class HybridCORELSPreClassifier:
 
         return a
 
+    def get_sparsity(self):
+        return len(self.interpretable_part.rl_.rules)-1
+
+    def get_status(self):
+        return self.interpretable_part.get_status()
+
 class HybridCORELSPostClassifier:
     """Hybrid Rule List/Black-box based classifier.
 
@@ -411,7 +417,6 @@ class HybridCORELSPostClassifier:
         if "hybrid" in self.verbosity:
             print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
             print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
-            print("Fitting the black-box part on examples not captured by the interpretable part...")
 
         # Old way: fit black-box only on uncaptured examples only
         X_not_captured = X[not_captured_indices]
@@ -573,3 +578,6 @@ class HybridCORELSPostClassifier:
         a = np.mean(np.invert(np.logical_xor(p, labels)))
 
         return a
+
+    def get_sparsity(self):
+        return len(self.interpretable_part.rl_.rules)-1

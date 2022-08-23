@@ -1,5 +1,5 @@
 from __future__ import print_function, division, with_statement
-from ._prefix_corels import fit_wrap_begin, fit_wrap_end, fit_wrap_loop, predict_wrap, predict_proba_wrap
+from ._prefix_corels import fit_wrap_begin, fit_wrap_end, fit_wrap_loop, predict_wrap, predict_proba_wrap, get_search_status
 from .utils import check_consistent_length, check_array, check_is_fitted, get_feature, check_in, check_features, check_rulelist, RuleList, compute_inconsistent_groups
 import numpy as np
 import pickle
@@ -505,6 +505,19 @@ class PrefixCorelsPreClassifier:
             s += "\n" + self.rl_.__repr__()
 
         return s
+
+    def get_status(self): 
+        status = get_search_status() # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
+        if status == 0:
+            return "exploration running"
+        elif status == -1:
+            return "max_nodes_reached"
+        elif status == -2:
+            return "opt"
+        elif status == -10:
+            return "exploration_not_started"
+        else:
+            return "unknown"
 
 class PrefixCorelsPostClassifier:
     """Certifiably Optimal RulE ListS classifier.

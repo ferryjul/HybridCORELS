@@ -145,6 +145,9 @@ int run_corels_loop(size_t max_num_nodes, PermutationMap* pmap, CacheTree* tree,
         bbound_loop(tree, queue, pmap);
         return 0;
     }
+    if(queue->empty()){ // OPT PROVED
+        return -2;
+    }
     return -1;
 }
 

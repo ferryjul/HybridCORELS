@@ -13,12 +13,13 @@ import os
 parser = argparse.ArgumentParser()
  # train data, last column is label
 parser.add_argument("--dataset", type= str, help = 'Dataset name. Options: adult, compas', default = 'compas')
+parser.add_argument("--method", type= str, help = 'pre or post, depending on the chosen paradigm', default = 'compas')
 
 args = parser.parse_args()
-
+method = args.method
 random_state_param = 42
 train_proportion = 0.8
-alpha_value = 3
+alpha_value = 10
 beta_value = 0.0
 dataset = args.dataset
 #df = pd.read_csv("data/{}.csv".format(dataset), sep = ',')
@@ -32,8 +33,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_
 
 #min_support=0.05, max_card=2, alpha=0.001
 # Set parameters
-corels_params = {'policy':"objective", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress", "hybrid"]} #"progress"
-bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
+corels_params = {'policy':"objective", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.05, 'verbosity':["progress", "hybrid"]} #"progress"
+bbox = RandomForestClassifier(random_state=42)#, min_samples_leaf=10, max_depth=10)
 
 # Define a hybrid model
 
@@ -56,13 +57,13 @@ def process(model, X, y):
 
     return df_res
 
-
 def sweep(min_coverage):
     # To use the interp-then-bb-training paradigm:
-    #hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
-    
+    if method == "pre":
+        hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
     # To use the bb-then-interpr-training paradigm:
-    hyb_model = HybridCORELSPostClassifier(black_box_classifier=bbox, beta=beta_value, min_coverage=min_coverage, bb_pretrained=False, **corels_params)#"progress"
+    elif method == "post":
+        hyb_model = HybridCORELSPostClassifier(black_box_classifier=bbox, beta=beta_value, min_coverage=min_coverage, bb_pretrained=False, **corels_params)#"progress"
    
     # Train the hybrid model
     hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
@@ -72,21 +73,17 @@ def sweep(min_coverage):
     print(hyb_model)
     return process(hyb_model, X_test, y_test)
 
-
 #save direcory
 save_dir = "./results/hycorels"
 os.makedirs(save_dir, exist_ok=True)
 
-min_coverages = [0.9] # np.linspace(0.40, 0.99, num=20)
-
-
+min_coverages = [0.80] # np.linspace(0.40, 0.99, num=20)
 
 df = pd.DataFrame()
 
 for min_coverage in min_coverages:
     print("===================>> min_coverage {}".format(min_coverage))
     df = pd.concat([df, sweep(min_coverage)])
-
 
 filename = '{}/{}.csv'.format(save_dir, args.dataset)
 

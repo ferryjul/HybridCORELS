@@ -249,6 +249,8 @@ cdef int* inconsistent_groups_indices_c
 cdef int* inconsistent_groups_min_card_c
 cdef int* inconsistent_groups_max_card_c
 
+search_status = -10
+
 def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples, 
              np.ndarray[np.uint8_t, ndim=2] labels,
              features, 
@@ -469,9 +471,17 @@ def fit_wrap_begin(np.ndarray[np.uint8_t, ndim=2] samples,
     return True
 
 def fit_wrap_loop(size_t max_nodes):
+    global search_status
     cdef size_t max_num_nodes = max_nodes
     # This is where the magic happens
-    return (run_corels_loop(max_num_nodes, pmap, tree, queue) != -1)
+    # return (run_corels_loop(max_num_nodes, pmap, tree, queue) != -1)
+    search_status = run_corels_loop(max_num_nodes, pmap, tree, queue)
+    return (search_status == 0)
+
+def get_search_status(): # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
+    global search_status
+    return search_status
+
 
 def fit_wrap_end(int early):
     global rules
