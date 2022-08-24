@@ -79,7 +79,7 @@ for train_index, test_index in kf.split(X):
     index_one_test = np.where(preds_types_counts_test[0] == 1)
     cover_rate_test = preds_types_counts_test[1][index_one_test][0]/np.sum(preds_types_counts_test[1])
     res.append([fold_id, min_coverage, alpha_value, accuracy_train, cover_rate_train, accuracy_test, cover_rate_test, status, sparsity, model_str])
-    fold_id =+ 1
+    fold_id += 1
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
