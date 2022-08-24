@@ -55,7 +55,7 @@ for train_index, test_index in kf.split(X):
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
 
-    bbox = RandomForestClassifier(random_state=42)#, min_samples_leaf=10, max_depth=10)
+    bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
     beta_value = 1 / X_train.shape[0]
 
     # Create and train the hybrid model
