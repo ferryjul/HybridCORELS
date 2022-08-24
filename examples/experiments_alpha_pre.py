@@ -63,7 +63,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_
                                                 shuffle=True, random_state=seed)
 
 
-bbox = RandomForestClassifier(random_state=seed, min_samples_leaf=5, max_depth=10)
+bbox = RandomForestClassifier(random_state=seed, min_samples_leaf=10, max_depth=10)
 beta_value = 1 / X_train.shape[0]
 
 # Create and train the hybrid model
@@ -72,7 +72,7 @@ hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
 
 # Iterate over alpha values
 for alpha_value in alpha_values:
-    bbox = RandomForestClassifier(random_state=seed, min_samples_leaf=5, max_depth=10)
+    bbox = RandomForestClassifier(random_state=seed, min_samples_leaf=10, max_depth=10)
     hyb_model.refit_black_box(X_train, y_train, alpha_value, bbox)
     #print(alpha_value, hyb_model)
     # Evaluate it
