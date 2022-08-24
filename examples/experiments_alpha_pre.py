@@ -45,7 +45,7 @@ min_coverage, seed = params_list[rank]
 
 # Set fixed parameters
 random_state_param = 42
-corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.10, 'verbosity':["progress"]} #"progress"
+corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.10, 'verbosity':[]} #"progress"
 #n_folds = 5
 
 # Load and prepare data
