@@ -45,7 +45,7 @@ min_coverage, seed = params_list[rank]
 
 # Set fixed parameters
 random_state_param = 42
-corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.05, 'verbosity':[]} #"progress"
+corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.10, 'verbosity':["progress"]} #"progress"
 #n_folds = 5
 
 # Load and prepare data
@@ -74,7 +74,7 @@ hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
 for alpha_value in alpha_values:
     bbox = RandomForestClassifier(random_state=seed, min_samples_leaf=10, max_depth=10)
     hyb_model.refit_black_box(X_train, y_train, alpha_value, bbox)
-    #print(alpha_value, hyb_model)
+    print(alpha_value, hyb_model)
     # Evaluate it
     sparsity = hyb_model.get_sparsity()
     model_str = hyb_model.__str__()
