@@ -7,4 +7,4 @@
 #SBATCH -o slurm_out/slurmout_%A.out
 #SBATCH -e slurm_out/slurmout_%A.errarray
 
-srun -W 3600 -n 240 python3 experiments_alpha_pre.py --dataset=compas
+srun -W 3600 -n 240 python3.10 experiments_alpha_pre.py --dataset=compas
