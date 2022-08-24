@@ -272,7 +272,7 @@ class RuleList:
                     feat += " && " + get_feature(self.features, self.rules[i]["antecedents"][j])
                 rule_support = self.rules[i]["support"]
                 rule_accuracy = self.rules[i]["accuracy"]
-                tot += "if [" + feat + "]:\n  " + self.prediction_name + " = " + str(bool(self.rules[i]["prediction"])) + "(support %d, accuracy %.3f)\nelse " %(rule_support, rule_accuracy)
+                tot += "if [" + feat + "]:\n  " + self.prediction_name + " = " + str(bool(self.rules[i]["prediction"])) + "(support %d, accuracy %.5f)\nelse " %(rule_support, rule_accuracy)
 
             # HybridCORELS: NO default decision
             #tot += "\n  " + self.prediction_name + " = " + str(bool(self.rules[-1]["prediction"]))

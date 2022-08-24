@@ -121,7 +121,8 @@ class HybridCORELSPreClassifier:
             examples_weights = np.ones(y.shape) # start from the uniform distribution
             examples_weights[not_captured_indices] = np.exp(self.alpha)
             examples_weights /= np.sum(examples_weights)
-
+            #print("min(examples_weights) = ", np.min(examples_weights))
+            #print("max(examples_weights) = ", np.max(examples_weights))
             # Then train the black-box on its weighted training set
             self.black_box_part.fit(X, y, sample_weight=examples_weights)
         else:
@@ -153,6 +154,70 @@ class HybridCORELSPreClassifier:
 
         return self
 
+    def refit_black_box(self, X, y, alpha, black_box_classifier):
+        """
+        Can be used to replace/retrain the black-box part of an HybridModel (pre-paradigm) without retraining the interpretable part
+
+        Parameters
+        ----------
+        X : array-like, shape = [n_samples, n_features]
+            The training input samples. All features must be binary, and the matrix
+            is internally converted to dtype=np.uint8.
+
+        y : array-line, shape = [n_samples]
+            The target values for the training input. Must be binary.
+        
+        alpha : float or int, new specialization coefficient value
+
+        black_box_classifier: classifier to be used as the black-box (will be trained)
+        Returns
+        -------
+        self : obj
+        """
+
+        self.alpha = alpha
+        self.black_box_part = black_box_classifier
+
+        # 2) Fit the black-box part of the Hybrid model (using examples not determined by the interpretable part)
+        # Retrieve only examples not captured by the interpretable part
+        interpretable_predictions = self.interpretable_part.predict(X)
+        not_captured_indices = np.where(interpretable_predictions == 2)
+        captured_indices = np.where(interpretable_predictions < 2)
+        if "hybrid" in self.verbosity:
+            print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
+            print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
+            print("Fitting the black-box part on examples not captured by the interpretable part...")
+
+        # Old way: fit black-box only on uncaptured examples only
+        X_not_captured = X[not_captured_indices]
+        y_not_captured = y[not_captured_indices]
+        #self.black_box_part.fit(X_not_captured, y_not_captured)
+
+        # New way: weight training examples
+        # First compute and set the sample weights
+        examples_weights = np.ones(y.shape) # start from the uniform distribution
+        examples_weights[not_captured_indices] = np.exp(self.alpha)
+        examples_weights /= np.sum(examples_weights)
+        #print("min(examples_weights) = ", np.min(examples_weights))
+        #print("max(examples_weights) = ", np.max(examples_weights))
+        # Then train the black-box on its weighted training set
+        self.black_box_part.fit(X, y, sample_weight=examples_weights)
+        
+        # Finally set the black-box metrics
+        self.black_box_support = not_captured_indices[0].size # Proportion of training examples falling into the black-box part
+        if not_captured_indices[0].size > 0:
+            self.black_box_accuracy = self.black_box_part.score(X_not_captured, y_not_captured) # Black-Box accuracy on these examples
+            y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
+            self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
+            if "hybrid" in self.verbosity:
+                print("majority pred = ", self.black_box_majority)
+        else:
+            self.black_box_accuracy = 1.00            
+        # Done!
+        self.is_fitted = True
+
+        return self
+    
     def predict(self, X):
         """
         Predict classifications of the input samples X.
@@ -251,7 +316,7 @@ class HybridCORELSPreClassifier:
 
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
-            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
+            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.5f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
         else:
             s += "Not Fitted Yet!"
             
