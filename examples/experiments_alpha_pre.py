@@ -15,7 +15,7 @@ if ccanada_expes:
     rank = comm.Get_rank()
     size = comm.Get_size()
 else:
-    rank = 0
+    rank = 231
     size = 1
 
 #import warnings
@@ -45,7 +45,7 @@ min_coverage, seed = params_list[rank]
 
 # Set fixed parameters
 random_state_param = 42
-corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.10, 'verbosity':[]} #"progress" # min_support was 0.05 for COMPAS experiments
+corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':5*10**6, 'min_support':0.10, 'verbosity':[]} #"progress" # min_support was 0.05 for COMPAS experiments
 #n_folds = 5
 
 # Load and prepare data
