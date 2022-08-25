@@ -2,3 +2,8 @@
 examples/__pycache__/
 analysis/__pycache__/
 examples/local_config.py
+DEADJOE
+HybridCORELS.egg-info/
+build/
+dist/
+results
