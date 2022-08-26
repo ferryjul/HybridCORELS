@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 This is the code for paper Companion rule list
 We make small modification to unify the API with other models
 """
-
 
 import numpy as np
 import pandas as pd 
@@ -14,18 +12,30 @@ import operator
 from scipy.sparse import csc_matrix
 import math
 from bitarray import bitarray
-import argparse
 from tqdm import tqdm
-
-from sklearn.ensemble import RandomForestClassifier
+from typing import List
 
 
 import warnings
 warnings.filterwarnings("ignore")
 
+from dataclasses import dataclass, field
+
+@dataclass
+class Coverage:
+    """ Store results on the Coverage of a RuleList """
+    rule_cover: List[bitarray] = field(default_factory=list) # Covered by a rule up to the mth
+    rule_catch: List[bitarray] = field(default_factory=list) # Catch by the mth list
+    bbox_cover: List[bitarray] = field(default_factory=list) # Not covered by a rule up to m
+    A: List[float] = field(default_factory=list)      # Accuracy of RuleList up to m
+    choose: List[int] = field(default_factory=list)   # Decision at list m
+
+
 
 def my_debug(msg):
     print("====================================> {}".format(msg))
+
+
 
 class CRL(object):
     
@@ -59,105 +69,29 @@ class CRL(object):
         self.max_card = max_card
         self.alpha = alpha
 
-    def __screen_rules_2(self, rules, df, y, N, supp):
-    
-        # This function screen rules by supporting rate
-        
-        itemInd = {}
-        for i,name in enumerate(df.columns):
-            itemInd[name] = int(i)
-        
-        len_rules = [len(rule) for rule in rules]
-        indices = np.array(list(itertools.chain.from_iterable([[itemInd[x] for x in rule] for rule in rules])))
-        indptr = list(accumulate(len_rules))
-        indptr.insert(0,0) # insert 0 at 0 position/necessary for building csc-matrix
-        indptr = np.array(indptr)
-        data = np.ones(len(indices))
-        ruleMatrix = csc_matrix((data,indices,indptr),shape = (len(df.columns),len(rules)))
-        
-        mat = np.matrix(df)*ruleMatrix # a matrix of data sum wrt rules
-        
-        lenMatrix = np.matrix([len_rules for i in range(df.shape[0])])
-        Z = (mat == lenMatrix).astype(int) # matrix with 0 and 1/'match' rule when 1
-        
-        Zpos = [Z[i] for i in np.where(np.array(y)>0)][0]
-        TP = np.array(np.sum(Zpos,axis=0).tolist()[0])
-        
-        supp_select = np.where(TP>=supp*sum(y)/100)[0]
-        FP = np.array(np.sum(Z,axis = 0))[0] - TP
-        p1 = TP.astype(float)/(TP+FP)
-        
-        supp_select = np.array([i for i in supp_select if p1[i]>np.mean(y)],dtype=np.int32)
-        select = np.argsort(p1[supp_select])[::-1][:N].tolist()
-        ind = list(supp_select[select])
-        rules = [rules[i] for i in ind]
-        
-        RMatrix = np.array(Z[:,ind]) 
-        supp = np.array(np.sum(Z,axis=0).tolist()[0])[ind] # support/number of data covered
-        
-        return rules, RMatrix, supp, p1[ind], FP[ind]
+        # List of bitarrays indicating whether or not rule i covers example j
+        self.cover_sets = []
 
     
-    def __generate_rulespace(self, need_negcode=False):
-        if need_negcode:
-            df = 1-self.df 
-            df.columns = [name.strip() + 'neg' for name in self.df.columns]
-            df = pd.concat([self.df,df],axis = 1)
-        else:
-            df = 1 - self.df
+    def __generate_rulespace(self):
         
         pindex = np.where(self.Y==1)[0]
         nindex = np.where(self.Y!=1)[0]
 
-        itemMatrix = [[item for item in df.columns if row[item] ==1] for i,row in df.iterrows() ]  
-        prules= fpgrowth([itemMatrix[i] for i in pindex], supp = self.min_support, zmin = 1,zmax = self.max_card)
+        itemMatrix = [[item for item in self.df.columns if row[item] ==1] for i,row in self.df.iterrows() ] 
+        prules= fpgrowth([itemMatrix[i] for i in pindex], supp=-1, zmin=1, zmax=self.max_card)
         prules = [np.sort(x[0]).tolist() for x in prules]
-        nrules= fpgrowth([itemMatrix[i] for i in nindex], supp = self.min_support, zmin = 1, zmax = self.max_card)
+        nrules= fpgrowth([itemMatrix[i] for i in nindex], supp=-1, zmin=1, zmax=self.max_card)
         nrules = [np.sort(x[0]).tolist() for x in nrules]
         
         return prules + nrules
 
 
-    def __screen_rules(self, rules, df, y, criteria='precision'):
-        print(rules)
-        # Store rules in a sparse matrix
-        itemInd = {}
-        for i, name in enumerate(df.columns):
-            itemInd[name] = int(i)
-        len_rules = [len(rule) for rule in rules]
-        indices = np.array(list(itertools.chain.from_iterable([[itemInd[x] for x in rule] for rule in rules])))
-        indptr = list(accumulate(len_rules))
-        indptr.insert(0, 0)
-        indptr = np.array(indptr)
-        data = np.ones(len(indices))
-        ruleMatrix = csc_matrix( (data, indices, indptr), shape=(len(df.columns), len(rules)) )
-
-        # mat = sparse.csr_matrix.dot(df,ruleMatrix)
-        # Multiply by the binarized data matrix to see which rules cover which instance
-        mat = np.matrix(df) * ruleMatrix
-        lenMatrix = np.matrix([len_rules for _ in range(df.shape[0])])
-        Z = (mat == lenMatrix).astype(int) # (n_instances, n_rules) binary matrix of cover(R_j, x_i)
-        Z_support = np.array(np.sum(Z, axis=0))[0] # Number of instances covered by each rule
-
-        # Compute the precision of each rule
-        Zpos = Z[y>0]
-        TP = np.array(np.sum(Zpos, axis=0))[0]
-        supp_select = np.where(TP >= self.min_support*sum(y)/100)[0] # Not sure what is going on !!!???
-        FP = Z_support - TP
-        precision = TP.astype(float) / (TP + FP)
-
-        # Select N rules with highest precision
-        supp_select = supp_select[precision[supp_select] > np.mean(y)]
-        select = np.argsort(-precision[supp_select])[:self.n_rules].tolist()
-        ind = list(supp_select[select])
-        rules = [rules[i] for i in ind]
-        RMatrix = np.array(Z[:, ind])
-
-        return rules, RMatrix
-
-    def __propose_rule(self, rule_sequence, premined):
+    def __propose_rule(self, rule_sequence):
         # This function propose a new rule based on the previous rule
         
+        premined = list(range(self.n_rules))
+
         premined_rules = premined.copy()
         rule_seq = rule_sequence.copy()
         
@@ -175,7 +109,7 @@ class CRL(object):
                 # randomly choose a rule in premined rules
                 rule_to_add = random.sample(premined_rules,1)[0]
                 # insert to a random position in the list
-                rule_seq.insert(random.randint(0,len(rule_seq)),rule_to_add)
+                rule_seq.insert(random.randint(0,len(rule_seq)), rule_to_add)
             
         elif (rand < 0.5):
             #print('remove')
@@ -205,13 +139,17 @@ class CRL(object):
                 
         return rule_seq
 
+
     def __compute_start(self, new_rule, prev_rule):
         # This function is to find where to start the computation
         # We use this mechanism to speed up the algorithm
         # before start, it is copy
         
+        # At the first iteration prev_rule is empty
+        if len(prev_rule) == 0:
+            return 0
         start = 0
-        match = False # to check if two rule list have different rule
+        match = False # Check if two non-empty rule list have different rule
         len_min = min(len(new_rule),len(prev_rule))
         
         for i in range(len_min):
@@ -221,163 +159,136 @@ class CRL(object):
                 break    
         
         if match == False:
-            # if no different rule, then the last rule must be removed/added
+            # If no different rule, then the last rule must be removed/added
             start = max(len(new_rule),len(prev_rule))-1
         
         return start
 
-    def __compute_support(self, rule, cover_sets, support_map, cover_map, cov_blx, start):
-    
-        # this function generates support map and cover map by less computation
-        # only copy before start
+
+    def __update_support(self, new_rule, curr_rule, curr_coverage):
+        # This function generates new coverage using current rule to 
+        # reduce computations
         
         # new rule, previous support, previous cover and a start point
         # start should not be larger than len(rule_list)-1 or len(support_map)
         
-        new_support_map = {} # accumulate set
-        new_cover_map = {} # non accumulate set
-        new_cov_blx = []
+        new_coverage = Coverage()
         
-        # copy before start
-        for i in range(start): 
-            
-            new_support_map[i] = support_map[i]
-            new_cover_map[i] = cover_map[i]
-            new_cov_blx.append(cov_blx[i])
-        
-        # compute after start
-        for i in range(start,len(rule)): # only do set computation from start
+        # Find start position by comparing new rule and previous rule
+        start = self.__compute_start(new_rule, curr_rule)
 
-            if i  == 0:
-                new_support_map[i] = cover_sets[rule[i]]
-                new_cover_map[i] = cover_sets[rule[i]]
-            
+        # Copy before start
+        if start > 0:
+            new_coverage.rule_cover.extend(curr_coverage.rule_cover[:start])
+            new_coverage.rule_catch.extend(curr_coverage.rule_catch[:start])
+            new_coverage.bbox_cover.extend(curr_coverage.bbox_cover[:start])
+            new_coverage.A.extend(curr_coverage.A[:start])
+            new_coverage.choose.extend(curr_coverage.choose[:start])
+        
+        # Compute after start
+        for i in range(start, len(new_rule)): # Only do set computation from start
+
+            if i == 0:
+                new_coverage.rule_cover.append(self.cover_sets[new_rule[i]])
+                new_coverage.rule_catch.append(self.cover_sets[new_rule[i]])
             else:
-                new_support_map[i] = (cover_sets[rule[i]])|(new_support_map[i-1]) # time cost 3
-                new_cover_map[i] = (cover_sets[rule[i]])&~(new_support_map[i-1]) # time cost 4
+                new_coverage.rule_cover.append((self.cover_sets[new_rule[i]]) |  (new_coverage.rule_cover[i-1]))
+                new_coverage.rule_catch.append((self.cover_sets[new_rule[i]]) & ~(new_coverage.rule_cover[i-1]))
             
-            new_cov_blx.append(~new_support_map[i])
-            
-        return new_support_map, new_cover_map, new_cov_blx
-    
-    def __obj_func(self, cov, Acc, Alpha, acc_blx, c_blx):
-        
-        k = len(cov)
-        
-        # The objective function
-        # cov: the cover rate of each rule
-        # Acc: the accuracy of each rule
-        # acc_blx: black box accuracy
-        # c_blx: the cover rate of black box
-        
-        acc = [sum([Acc[i]*cov[i] for i in range(j+1)])+acc_blx[j]*c_blx[j] for j in range(k)]
-        obj_list = [0.5*(acc[i]+acc[i-1])*cov[i] for i in range(1,k)]
-        
-        obj = sum(obj_list)+0.5*(acc[0]+self.BLX_ACC)*cov[0]#
-        obj = obj - Alpha*k
+            new_coverage.bbox_cover.append(~new_coverage.rule_cover[i])
 
+            # Number of instance captured by mth list
+            covered_num = sum(new_coverage.rule_catch[i])
+            # Positive instance captured my mth list
+            pos_label = self.Y&(new_coverage.rule_catch[i])
+
+            # Rule m predicts positive class
+            if sum(pos_label) > covered_num / 2:
+                # The only changes in error are:
+                #   bb predict neg error -> rule predict pos correct
+                #   bb predict neg correct -> rule predict pos error
+                delta_A = sum(self.Y&(~self.Yb)&new_coverage.rule_catch[i])
+                delta_A -= sum((~self.Y)&(~self.Yb)&new_coverage.rule_catch[i])
+                new_coverage.choose.append(1)
+            # Rule m predicts negative class
+            else:
+                # The only changes in error are:
+                #   bb predict pos error -> rule predict neg correct
+                #   bb predict pos correct -> rule predict neg error
+                delta_A = sum((~self.Y)&self.Yb&new_coverage.rule_catch[i])
+                delta_A -= sum(self.Y&self.Y_c&new_coverage.rule_catch[i])
+                new_coverage.choose.append(0)
+            if i == 0:
+                new_coverage.A.append(self.BLX_ACC + delta_A / self.N)
+            else:
+                new_coverage.A.append(new_coverage.A[i-1] + delta_A / self.N)
+
+        return new_coverage
+    
+
+    def __obj_func(self, coverage, Alpha):
+        
+        # Length of rulelist
+        k = len(coverage.rule_cover)
+        
+        obj = (coverage.A[0] + self.BLX_ACC) * sum(coverage.rule_catch[0])#
+        obj += sum([(coverage.A[i] + coverage.A[i-1]) * sum(coverage.rule_catch[i]) for i in range(1, k)])
+        obj *= 0.5 / self.N
+        obj -= Alpha*k
         return obj
 
-    def __compute_obj(self, new_rule_n, prev_rule_n, support_map, cover_map, cov_blx, c, A, choose):
-        # This function compute objective function
-        k = len(new_rule_n)
-        
-        # prev_rule and support_map match
-        c_new = [] # cover rate of each rule
-        A_new = [] # accuracy of each rule
-        choose_new = []
 
-        # find start position by comparing new rule and previous rule
 
-        start_position = self.__compute_start(new_rule_n, prev_rule_n)
+    def __simulated_annealing(self, init_rule_idx, iteration, T0):
         
-        new_support_map,new_cover_map,new_cov_blx = self.__compute_support(new_rule_n, self.cover_sets, support_map, cover_map, cov_blx, start_position)
+        # Temperature
+        temperature = T0
+        
+        # Current and optimal objectives
+        obj_curr = 0.1
+        obj_best = 0
+        
+        # Init coverage
+        curr_coverage = Coverage()
+        curr_rule_idx = init_rule_idx
+        curr_coverage = self.__update_support(curr_rule_idx, [], curr_coverage)
+        
+        # Main iteration
+        for t in tqdm(range(iteration)):
+            # Randomly perturb the current rulelist
+            new_rule_idx = self.__propose_rule(curr_rule_idx)
 
-        # copy before start position
-        for i in range(0,start_position):
-            c_new.append(c[i])
-            A_new.append(A[i])
-            choose_new.append(choose[i])
-            
-        # compute after start position
-        for i in range(start_position,k):
-            
-            pos_label_num = sum(self.Y&(new_cover_map[i])) # time cost 1
-            covered_num = sum(new_cover_map[i])
-                    
-            pos_acc = pos_label_num/(covered_num+0.0001)
-            neg_acc = (covered_num-pos_label_num)/(covered_num+0.0001)
-            
-            c_new.append(covered_num/self.X.shape[0])
-            
-            #A_new.append(max(pos_acc,neg_acc))
-            if pos_acc > neg_acc:
-                A_new.append(pos_acc)
-                choose_new.append(1)
-            
-            else:
-                A_new.append(neg_acc)
-                choose_new.append(0)
-        
-        blx_cov_num = [sum(new_cov_blx[i]) for i in range(len(new_support_map))]
-        
-        acc_blx = [sum(new_cov_blx[i]&self.Y_c)/(blx_cov_num[i]+0.0001) for i in range(len(new_support_map))]
-        c_blx = [blx_cov_num[i]/self.X.shape[0] for i in range(len(new_support_map))]
+            # Update coverage of rule list
+            new_coverage = self.__update_support(new_rule_idx, curr_rule_idx, curr_coverage)
 
-        # compute object
-        obj = self.__obj_func(c_new, A_new, self.alpha, acc_blx, c_blx)
-        return obj, c_new, A_new, choose_new, new_support_map, new_cover_map, new_cov_blx
-    
-    def __simulated_annealing(self, iteration, init_T):
-    
-        # The main loop of simulated annealing
-        
-        # temperature
-        temperature = init_T
-        
-        obj_p, chosen, A = 0.1, [], []
-
-        obj_best, cover_best, c_best, A_best = 0, 0, [], []
-        rule_best, chosen_best = [], []
-        
-        # init support map and cover map
-        support_map, cover_map, cov_blx = self.__compute_support(self.init_rule, self.cover_sets, {}, {}, [], start=0)
-
-        # init Accuracy, cover and chosen
-        c = [sum(cover_map[i])/self.X.shape[0] for i in range(len(self.init_rule))]
-        
-        for i in range(len(self.init_rule)):
-            init_pos_acc = sum(self.Y&(cover_map[i]))/(sum(cover_map[i])+0.001)
-            init_neg_acc = (sum(cover_map[i])-sum(self.Y&(cover_map[i])))/(sum(cover_map[i])+0.001)
+            # Compute objective
+            obj_new = self.__obj_func(new_coverage, self.alpha)
             
-            if init_pos_acc>init_neg_acc:
-                A.append(init_pos_acc)
-                chosen.append(1)
-            else:
-                A.append(init_neg_acc)
-                chosen.append(0)
-        
-        prev_rule = self.init_rule
-        
-        # main iteration
-        for t in range(iteration):
-            rule_proposed = self.__propose_rule(prev_rule, list(range(len(self.premined_rules))))
-            obj_c, c_new, A_new, chosen_new, new_support_map, new_cover_map, new_cov_blx  = self.__compute_obj(rule_proposed, prev_rule, support_map, cover_map, cov_blx, c, A, chosen)
-            if obj_c > obj_p:
-                obj_p, prev_rule, c, A, support_map, cover_map, cov_blx, chosen = obj_c, rule_proposed, c_new, A_new, new_support_map, new_cover_map, new_cov_blx, chosen_new
-                # must check again here
-                if obj_c > obj_best:
-                    obj_best, c_best, A_best, rule_best, chosen_best = obj_c, c_new, A_new, rule_proposed, chosen_new
-                    cover_best = new_support_map[len(new_support_map)-1]
+            if obj_new > obj_curr:
+                # Accept the change
+                obj_curr = obj_new
+                curr_rule_idx = new_rule_idx
+                curr_coverage = new_coverage
+                # Update optimal solution
+                if obj_new > obj_best:
+                    obj_best = obj_new
+                    rule_idx_best = new_rule_idx
+                    coverage_best = new_coverage
+            # Update worst solution with low probablity
             else:
                 rand = random.random()
-                accept_rate = math.exp((obj_c-obj_p)/temperature)
+                accept_rate = math.exp((obj_new-obj_curr)/temperature)
                 if accept_rate > rand:
-                    obj_p, prev_rule, c, A, support_map, cover_map, cov_blx, chosen = obj_c, rule_proposed, c_new, A_new, new_support_map, new_cover_map, new_cov_blx, chosen_new
-            temperature = init_T/math.log(2+t)
-        return obj_best, c_best, A_best, cover_best, chosen_best, rule_best
+                    # Accept the change
+                    obj_curr = obj_new
+                    curr_rule_idx = new_rule_idx
+                    curr_coverage = new_coverage
+            # Lower the temperature
+            temperature = T0 / math.log(2 + t)
+        return rule_idx_best, coverage_best, obj_best
     
-    def fit(self, X, y, n_iteration=5000, init_temperature=0.001, print_progress=False, random_state=42):
+
+    def fit(self, X, y, n_iteration=5000, init_temperature=0.001, random_state=42, premined_rules=False):
 
         """
         Build a HyRS from the training set (X, y).
@@ -402,52 +313,108 @@ class CRL(object):
         # Store the training data
         self.df = X
         self.Y = y
+        self.N = len(y)
 
-        self.premined_rules = self.__generate_rulespace()
+        # If the feature are already rules that have been mined
+        if premined_rules:
+            self.all_rules = list(X.columns)
+            self.n_rules = X.shape[1]
+            self.len_rules = [1 for _ in range(self.n_rules)]
+        else:
+            self.all_rules = self.__generate_rulespace()
+            self.n_rules = len(self.all_rules)
+            self.len_rules = [len(self.all_rules[i]) for i in range(self.n_rules)]
 
         self.Y = bitarray(list(y))
         self.Yb = bitarray(list(self.bbox.predict(X)))
-        self.Y_c = ~(self.Y^self.Yb) # to speed up
-        self.BLX_ACC = sum(self.Y_c)/len(self.Y) # overall black box accuracy
-        self.N = len(y)
-        self.X = X
+        self.Y_bberror = (self.Y^self.Yb)
+        self.Y_c = ~self.Y_bberror  # to speed up
+        self.BLX_ACC = sum(self.Y_c) / self.N # overall black box accuracy
         
-        
-        self.init_rule = random.sample(list(range(len(self.premined_rules))), 3)
+        # Set on 
+        init_rule_idx = random.sample(list(range(len(self.all_rules))), 3)
 
-        cover_sets = [np.sum(self.df[self.premined_rules[i]], axis=1)==len(self.premined_rules[i]) for i in range(len(self.premined_rules))]
+        # list of bitarrays indicating whether or not rule i covers example j
+        cover_sets = [np.sum(self.df[self.all_rules[i]], axis=1)==self.len_rules[i] for i in range(self.n_rules)]
+        self.cover_sets = [bitarray(list(cover_sets[i])) for i in range(self.n_rules)]
 
-        self.cover_sets = [bitarray(list(cover_sets[i])) for i in range(len(self.premined_rules))]
-
-        #self.cover_sets = [bitarray(np.sum(self.df[self.premined_rules[i]], axis=1)==len(self.premined_rules[i])) for i in range(10)]
-
-        self.obj, self.c, self.A, self.cover, self.chosen, self.rule = self.__simulated_annealing(n_iteration, init_temperature)
+        T0 = init_temperature
+        self.rule_idx, self.coverage, self.obj = self.__simulated_annealing(init_rule_idx, n_iteration, T0)
 
         return self
 
-    def predict_with_type(self, X):
-        """
-        ToDo
-        Predict classifications of the input samples X, along with a boolean (one per example)
-        indicating whether the example was classified by the interpretable part of the model or not.
 
-        Arguments
-        ---------
-        X : pd.DataFrame, shape = [n_samples, n_features]
-            The training input samples. All features must be binary, and the same
-            as those of the data used to train the model.
+    # def predict_with_type(self, X):
+    #     """
+    #     ToDo
+    #     Predict classifications of the input samples X, along with a boolean (one per example)
+    #     indicating whether the example was classified by the interpretable part of the model or not.
 
-        Returns
-        -------
-        ToDo
-        """
+    #     Arguments
+    #     ---------
+    #     X : pd.DataFrame, shape = [n_samples, n_features]
+    #         The training input samples. All features must be binary, and the same
+    #         as those of the data used to train the model.
 
-        test_Yb = self.bbox.predict(X)
-        # use test data to test the rule list
-        output_rules = [self.premined_rules[self.rule[i]] for i in range(len(self.rule))]
-        catch_list = np.array([-1]*X.shape[0])
-        # to show observation is caught by which rule
-        for i in range(X.shape[0]):
+    #     Returns
+    #     -------
+    #     ToDo
+    #     """
+
+    #     test_Yb = self.bbox.predict(X)
+    #     # use test data to test the rule list
+    #     output_rules = [self.premined_rules[self.rule[i]] for i in range(len(self.rule))]
+    #     catch_list = np.array([-1]*X.shape[0])
+    #     # to show observation is caught by which rule
+    #     for i in range(X.shape[0]):
+    #         for j in range(len(output_rules)):
+    #             match = True
+    #             for condition in output_rules[j]:
+    #                 if X.iloc[i][condition] == 0:
+    #                     match = False
+    #                     break
+    #             if match == True:
+    #                 catch_list[i] = j
+    #                 break
+        
+    #     test_cover_rate = [0]*len(output_rules)
+    #     blx_cover_rate = [0]*len(output_rules)
+    #     test_acc = []
+    #     blx_acc = []
+        
+    #     rule_coverd_set = set()
+    #     blx_cover_set = set(range(X.shape[0]))
+
+
+    #     Yhat = []
+    #     covered = []
+        
+    #     for i in range(len(output_rules)):
+    #         # observation num caught by rule i
+    #         rule_catch = np.where(catch_list==i)[0]
+    #         # the accumulated rules catch by rule list
+    #         rule_coverd_set = rule_coverd_set.union(set(rule_catch))
+    #         # the left part is then caught by blx model
+    #         blx_cover = blx_cover_set.difference(rule_coverd_set)
+    #         # blx cover rate
+    #         blx_cover_rate[i] = len(blx_cover)/(X.shape[0]+0.0001)
+    #         # cover rate and accuracy of rules
+    #         test_cover_rate[i] = len(rule_catch)/(X.shape[0] + 0.0001)
+        
+        
+        
+    #     return output_rules, test_cover_rate,test_acc, list(accumulate(test_cover_rate))
+    
+    
+    def test(self, X, y):
+        ybb = self.bbox.predict(X)
+        N  = len(y)
+        # Use test data to test the rule list
+        output_rules = [self.all_rules[self.rule_idx[i]] for i in range(len(self.rule_idx))]
+        catch_list = np.array([-1]*N)
+        
+        # Which observation is caught by which rule
+        for i in range(N):
             for j in range(len(output_rules)):
                 match = True
                 for condition in output_rules[j]:
@@ -457,83 +424,32 @@ class CRL(object):
                 if match == True:
                     catch_list[i] = j
                     break
-        
-        test_cover_rate = [0]*len(output_rules)
-        blx_cover_rate = [0]*len(output_rules)
-        test_acc = []
-        blx_acc = []
-        
-        rule_coverd_set = set()
-        blx_cover_set = set(range(X.shape[0]))
-
-
-        Yhat = []
-        covered = []
-        
-        for i in range(len(output_rules)):
-            # observation num caught by rule i
-            rule_catch = np.where(catch_list==i)[0]
-            # the accumulated rules catch by rule list
-            rule_coverd_set = rule_coverd_set.union(set(rule_catch))
-            # the left part is then caught by blx model
-            blx_cover = blx_cover_set.difference(rule_coverd_set)
-            # blx cover rate
-            blx_cover_rate[i] = len(blx_cover)/(X.shape[0]+0.0001)
-            # cover rate and accuracy of rules
-            test_cover_rate[i] = len(rule_catch)/(X.shape[0] + 0.0001)
-            
-        
-        
-        
-        return output_rules, test_cover_rate,test_acc, list(accumulate(test_cover_rate))
-        
-    def test(self, test_data, test_label):
-        test_Yb = self.bbox.predict(test_data)
-
-        # use test data to test the rule list
-        output_rules = [self.premined_rules[self.rule[i]] for i in range(len(self.rule))]
-        catch_list = np.array([-1]*test_data.shape[0])
-        
-        # to show observation is caught by which rule
-        for i in range(test_data.shape[0]):
-            for j in range(len(output_rules)):
-                match = True
-                for condition in output_rules[j]:
-                    if test_data.iloc[i][condition] == 0:
-                        match = False
-                        break
-                if match == True:
-                    catch_list[i] = j
-                    break
                     
-        test_cover_rate = [0]*len(output_rules)
-        blx_cover_rate = [0]*len(output_rules)
-        test_acc = []
-        blx_acc = []
-        
-        rule_coverd_set = set()
-        blx_cover_set = set(range(test_data.shape[0]))
+        rule_coverage = [0]*len(output_rules)
+        bb_coverage = [0]*len(output_rules)
+        rule_correct = []
+        bb_correct = []
+        rule_cover_set = set()
+        blx_cover_set = set(range(N))
         
         for i in range(len(output_rules)):
-            # observation num caught by rule i
+            # Observations caught by rule i
             rule_catch = np.where(catch_list==i)[0]
-            # the accumulated rules catch by rule list
-            rule_coverd_set = rule_coverd_set.union(set(rule_catch))
-            # the left part is then caught by blx model
-            blx_cover = blx_cover_set.difference(rule_coverd_set)
-            # blx cover rate
-            blx_cover_rate[i] = len(blx_cover)/(test_data.shape[0]+0.0001)
-            # blx accuracy
-            blx_acc.append(sum(test_Yb[list(blx_cover)]==test_label[list(blx_cover)])/(len(blx_cover)+0.0001))
+            # Cummulated instance caugth by rule list
+            rule_cover_set = rule_cover_set.union(set(rule_catch))
+            # The rest is send to the bb model
+            bb_cover = blx_cover_set.difference(rule_cover_set)
+            # BB coverage
+            bb_coverage[i] = len(bb_cover) / N 
+            # BB accuracy
+            bb_correct.append(sum(ybb[list(bb_cover)]==y[list(bb_cover)]))
             # cover rate and accuracy of rules
-            test_cover_rate[i] = len(rule_catch)/(test_data.shape[0] + 0.0001)
-            test_acc.append(sum(test_label[rule_catch] == self.chosen[i])/ (len(rule_catch)+0.0001))
+            rule_coverage[i] = 1 - bb_coverage[i]#len(rule_catch)/(test_data.shape[0] + 0.0001)
+            rule_correct.append(sum(y[rule_catch] == self.coverage.choose[i]))
         
-        # the overall accuracy of hybrid models
-        test_overall_acc = [sum([test_cover_rate[i]*test_acc[i] for i in range(j+1)])+blx_cover_rate[j]*blx_acc[j] for j in range(len(output_rules))]
-        
-        return test_overall_acc, output_rules, test_cover_rate, test_acc, list(accumulate(test_cover_rate))
-
+        # The overall accuracy of hybrid models
+        test_overall_acc = [(sum([rule_correct[i] for i in range(j+1)]) + bb_correct[j]) / N for j in range(len(output_rules))]
+        return output_rules, rule_coverage, test_overall_acc
 
 
 
@@ -546,46 +462,3 @@ def accumulate(iterable, func=operator.add):
     for element in it:
         total = func(total, element)
         yield total
-
-
-def find_lt(a, x):
-    """ Find rightmost value less than x"""
-    i = bisect_left(a, x)
-    if i:
-        return int(i-1)
-    else:
-        return 0
-
-
-def extract_rules(tree, feature_names):
-    left     = tree.tree_.children_left
-    right    = tree.tree_.children_right
-    features = [feature_names[i] for i in tree.tree_.feature]
-    # Get ids of leaf nodes
-    idx = np.argwhere(left == -1)[:, 0]
-
-    def recurse(left, right, child, lineage=None):          
-        if lineage is None:
-            lineage = []
-        if child in left:
-            parent = np.where(left == child)[0].item()
-            suffix = 'neg'
-        else:
-            parent = np.where(right == child)[0].item()
-            suffix = ''
-
-        lineage.append((features[parent].strip() + suffix))
-
-        if parent == 0:
-            lineage.reverse()
-            return lineage
-        else:
-            return recurse(left, right, parent, lineage)
-    
-    rules = []
-    for child in idx:
-        rule = []
-        for node in recurse(left, right, child):
-            rule.append(node)
-        rules.append(rule)
-    return rules
