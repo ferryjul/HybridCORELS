@@ -5,21 +5,18 @@ We make small modification to unify the API with other models
 
 import numpy as np
 import pandas as pd 
-from fim import fpgrowth 
-import itertools
 import random
 import operator
-from scipy.sparse import csc_matrix
 import math
 from bitarray import bitarray
 from tqdm import tqdm
 from typing import List
-
+from dataclasses import dataclass, field
 
 import warnings
 warnings.filterwarnings("ignore")
 
-from dataclasses import dataclass, field
+from rule_mining import generate_rulespace
 
 @dataclass
 class Coverage:
@@ -72,19 +69,6 @@ class CRL(object):
         # List of bitarrays indicating whether or not rule i covers example j
         self.cover_sets = []
 
-    
-    def __generate_rulespace(self):
-        
-        pindex = np.where(self.Y==1)[0]
-        nindex = np.where(self.Y!=1)[0]
-
-        itemMatrix = [[item for item in self.df.columns if row[item] ==1] for i,row in self.df.iterrows() ] 
-        prules= fpgrowth([itemMatrix[i] for i in pindex], supp=-1, zmin=1, zmax=self.max_card)
-        prules = [np.sort(x[0]).tolist() for x in prules]
-        nrules= fpgrowth([itemMatrix[i] for i in nindex], supp=-1, zmin=1, zmax=self.max_card)
-        nrules = [np.sort(x[0]).tolist() for x in nrules]
-        
-        return prules + nrules
 
 
     def __propose_rule(self, rule_sequence):
@@ -320,11 +304,14 @@ class CRL(object):
             self.all_rules = list(X.columns)
             self.n_rules = X.shape[1]
             self.len_rules = [1 for _ in range(self.n_rules)]
+        # Otherwise mine the rules
         else:
-            self.all_rules = self.__generate_rulespace()
+            _, prules, nrules = generate_rulespace(X, y, self.max_card, random_state=random_state)
+            self.all_rules = prules + nrules
             self.n_rules = len(self.all_rules)
             self.len_rules = [len(self.all_rules[i]) for i in range(self.n_rules)]
 
+        # Predictions and errors
         self.Y = bitarray(list(y))
         self.Yb = bitarray(list(self.bbox.predict(X)))
         self.Y_bberror = (self.Y^self.Yb)

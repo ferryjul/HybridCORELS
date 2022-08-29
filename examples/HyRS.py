@@ -1,20 +1,18 @@
 import pandas as pd 
-#from fim import fpgrowth,fim # you can comment this out if you do not use fpgrowth to generate rules
 import numpy as np
-import itertools
 from numpy.random import random
 from bisect import bisect_left
 from random import sample, seed
 from sklearn.metrics import confusion_matrix
 import operator
-from scipy.sparse import csc_matrix
-from sklearn.ensemble import RandomForestClassifier
 from dataclasses import dataclass
 from tqdm import tqdm
 
+from rule_mining import generate_rulespace, screen_rules
+
 @dataclass
 class Coverage:
-    """ Store results on the Coverage of a RuleSet"""
+    """ Store results on the Coverage of a RuleSet """
     p: np.array # Is instance i covered by R+ ?
     n: np.array # Is instance i covered by R- ?
     overlap: np.array   # Is instance i covered by both R+ and R- ?
@@ -24,7 +22,7 @@ class Coverage:
 
 
 class HybridRuleSetClassifier(object):
-    def __init__(self, black_box_classifier, min_support=5, max_card=2, n_rules=5000, T0=0.01, alpha=1, beta=0.1):
+    def __init__(self, black_box_classifier, min_support=5, max_card=2, n_rules=5000, alpha=1, beta=0.1):
         """Hybrid Rule Set/Black-box based classifier.
 
         This class implements an Hybrid interpretable/black-box model.
@@ -43,8 +41,6 @@ class HybridRuleSetClassifier(object):
 
         n_rules: number of rules in the rule-space to consider
 
-        T0 : initital temperature used for the local search
-
         alpha: coefficient to weight the Interpretability term in the objective
 
         beta: coefficient to weight the Coverage term in the objective
@@ -60,89 +56,13 @@ class HybridRuleSetClassifier(object):
         self.max_card = max_card
         self.n_rules = n_rules
         self.black_box_classifier = black_box_classifier
-        self.T0 = T0
         self.alpha = alpha
         self.beta = beta
+        
 
 
-    def __generate_rulespace(self, need_negcode=False, method='fpgrowth', random_state=42):
-        if method == 'fpgrowth': # generate rules with fpgrowth
-            if need_negcode:
-                df = 1-self.df 
-                df.columns = [name.strip() + 'neg' for name in self.df.columns]
-                df = pd.concat([self.df,df],axis = 1)
-            else:
-                df = 1 - self.df
-            pindex = np.where(self.Y==1)[0]
-            nindex = np.where(self.Y!=1)[0]
-            itemMatrix = [[item for item in df.columns if row[item] ==1] for i,row in df.iterrows() ]  
-            prules= fpgrowth([itemMatrix[i] for i in pindex],supp = supp,zmin = 1,zmax = maxlen)
-            prules = [np.sort(x[0]).tolist() for x in prules]
-            nrules= fpgrowth([itemMatrix[i] for i in nindex],supp = supp,zmin = 1,zmax = maxlen)
-            nrules = [np.sort(x[0]).tolist() for x in nrules]
-        else: # if you cannot install the package fim, then use random forest to generate rules
-            print('Using random forest to generate rules ...')
-            prules = []
-            for length in range(2, self.max_card, 1):
-                n_estimators = 250 * length
-                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=random_state)
-                clf.fit(self.df, self.Y)
-                for n in range(n_estimators):
-                    prules.extend(extract_rules(clf.estimators_[n], self.df.columns))
-            #prules = [list(x) for x in set(tuple(np.sort(x)) for x in prules)]
-            nrules = []
-            for length in range(2, self.max_card, 1):
-                n_estimators = 250 * length# min(5000,int(min(comb(df.shape[1], length, exact=True),10000/maxlen)))
-                clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=length, random_state=random_state)
-                clf.fit(self.df, 1 - self.Y)
-                for n in range(n_estimators):
-                    nrules.extend(extract_rules(clf.estimators_[n], self.df.columns))
-            #nrules = [list(x) for x in set(tuple(np.sort(x)) for x in nrules)]   
-            df = 1 - self.df 
-            df.columns = [name.strip() + 'neg' for name in self.df.columns]
-            df = pd.concat([self.df, df], axis=1)
-        self.prules, self.pRMatrix = self.__screen_rules(prules, df, self.Y)
-        self.nrules, self.nRMatrix = self.__screen_rules(nrules, df, 1-self.Y)
-
-
-    def __screen_rules(self, rules, df, y, criteria='precision'):
-        # Store rules in a sparse matrix
-        itemInd = {}
-        for i, name in enumerate(df.columns):
-            itemInd[name] = int(i)
-        len_rules = [len(rule) for rule in rules]
-        indices = np.array(list(itertools.chain.from_iterable([[itemInd[x] for x in rule] for rule in rules])))
-        indptr = list(accumulate(len_rules))
-        indptr.insert(0, 0)
-        indptr = np.array(indptr)
-        data = np.ones(len(indices))
-        ruleMatrix = csc_matrix( (data, indices, indptr), shape=(len(df.columns), len(rules)) )
-
-        # mat = sparse.csr_matrix.dot(df,ruleMatrix)
-        # Multiply by the binarized data matrix to see which rules cover which instance
-        mat = np.matrix(df) * ruleMatrix
-        lenMatrix = np.matrix([len_rules for _ in range(df.shape[0])])
-        Z = (mat == lenMatrix).astype(int) # (n_instances, n_rules) binary matrix of cover(R_j, x_i)
-        Z_support = np.array(np.sum(Z, axis=0))[0] # Number of instances covered by each rule
-
-        # Compute the precision of each rule
-        Zpos = Z[y>0]
-        TP = np.array(np.sum(Zpos, axis=0))[0]
-        supp_select = np.where(TP >= self.min_support*sum(y)/100)[0] # Not sure what is going on !!!???
-        FP = Z_support - TP
-        precision = TP.astype(float) / (TP + FP)
-
-        # Select N rules with highest precision
-        supp_select = supp_select[precision[supp_select] > np.mean(y)]
-        select = np.argsort(-precision[supp_select])[:self.n_rules].tolist()
-        ind = list(supp_select[select])
-        rules = [rules[i] for i in ind]
-        RMatrix = np.array(Z[:, ind])
-
-        return rules, RMatrix
-
-
-    def fit(self, X, y, n_iteration=5000, interpretability='size', print_progress=False, random_state=42):
+    def fit(self, X, y, n_iteration=5000, T0=0.01, interpretability='size', print_progress=False, 
+                                                   random_state=42, premined_rules=False, n_pos_rules=0):
         """
         Build a HyRS from the training set (X, y).
 
@@ -155,6 +75,13 @@ class HybridRuleSetClassifier(object):
             The target values for the training input. Must be binary.
         
         n_iteration : number of iterations of the local search.
+
+        premined_rules : Boolean
+            Whether or not the features of X are already premined rules
+
+        n_pos_rules : int
+            If premined_rules=True, then assuming positive rules come before
+            negative ones, this variable describes the number of positive rules
 
         Returns
         -------
@@ -170,9 +97,20 @@ class HybridRuleSetClassifier(object):
         self.N = len(y)
         self.Yb = self.black_box_classifier.predict(X)
 
-        # Generate the space of rules
-        self.__generate_rulespace(method='randomforest', random_state=random_state)
-        
+        self.premined_rules = premined_rules
+        # If the feature are already rules that have been mined
+        if premined_rules:
+            all_rules = list(X.columns)
+            self.prules = all_rules[:n_pos_rules]
+            self.pRMatrix = X.iloc[:, :n_pos_rules]
+            self.nrules = all_rules[n_pos_rules:]
+            self.nRMatrix = X.iloc[:, n_pos_rules:]
+        # Otherwise mine the rules
+        else:
+            _, prules, nrules = generate_rulespace(X, y, self.max_card, random_state=random_state)
+            self.prules, self.pRMatrix = screen_rules(prules, X, self.n_rules // 2, self.min_support)
+            self.nrules, self.nRMatrix = screen_rules(nrules, X, self.n_rules // 2, self.min_support)
+
         # Setup
         self.maps = []
         int_flag = int(interpretability =='size')
@@ -204,9 +142,6 @@ class HybridRuleSetClassifier(object):
         # Main Loop
         self.actions = []
         for iter in tqdm(range(n_iteration), disable=print_progress):
-            ## What is this????
-            #if iter > 0.75 * Niteration:
-            #    prs_curr,nrs_curr,pcovered_curr,ncovered_curr,overlap_curr,covered_curr, Yhat_curr = prs_opt[:],nrs_opt[:],pcovered_opt[:],ncovered_opt[:],overlap_opt[:],covered_opt[:], Yhat_opt[:] 
             
             # Propose new RuleSets
             prs_new, nrs_new, coverage_new = self.__propose_rs(Yhat_curr, prs_curr, nrs_curr, coverage_curr)
@@ -224,7 +159,7 @@ class HybridRuleSetClassifier(object):
             obj_new = o1_new + self.alpha * o2_new + self.beta * o3_new
 
             # Decrease Temperature
-            T = self.T0 ** (iter / n_iteration)
+            T = T0 ** (iter / n_iteration)
             # Acceptance Probability
             alpha = np.exp(float(obj_curr - obj_new) / T)
 
@@ -233,17 +168,7 @@ class HybridRuleSetClassifier(object):
                 prs_opt = prs_new
                 nrs_opt = nrs_new
                 obj_opt = obj_new
-                
-                #perror, nerror, oerror, berror = self.diagnose(pcovered_new, ncovered_new, overlap_new, covered_new, Yhat_new)
-                #accuracy_min = float(TP+TN)/self.N
-                #explainability_min = sum(covered_new)/self.N
-                #covered_min = covered_new
             
-            #if print_message:
-            #    perror, nerror, oerror, berror = self.diagnose(pcovered_new,ncovered_new,overlap_new,covered_new,Yhat_new)
-            #    print('\niter = {}, alpha = {}, {}(obj) = {}(error) + {}(intepretability) + {}(exp)\n accuracy = {}, explainability = {}, nfeatures = {}\n perror = {}, nerror = {}, oerror = {}, berror = {}\n '.format(iter,round(alpha,2),round(obj_new,3),(FP+FN)/self.N, self.alpha*(len(prs_new) + len(nrs_new)), self.beta*sum(~covered_new)/self.N, (TP+TN+0.0)/self.N,sum(covered_new)/self.N, nfeatures,perror,nerror,oerror,berror ))
-            #    print('prs = {}, nrs = {}'.format(prs_new, nrs_new))
-
             # Accept the change is probability alpha
             if random() <= alpha:
                 # Update current solution
@@ -277,16 +202,9 @@ class HybridRuleSetClassifier(object):
         return Coverage(p, n, overlap, pcovered, ncovered, covered)
 
 
-    # def diagnose(self, pcovered, ncovered, overlapped, covered, Yhat):
-    #     perror = sum(self.Y[pcovered]!=Yhat[pcovered])
-    #     nerror = sum(self.Y[ncovered]!=Yhat[ncovered])
-    #     oerror = sum(self.Y[overlapped]!=Yhat[overlapped])
-    #     berror = sum(self.Y[~covered]!=Yhat[~covered])
-    #     return perror, nerror, oerror, berror
-
 
     def __compute_loss(self, coverage):
-        # pcovered : is x covered by R+ ?
+        # p: is x covered by R+ ?
         # covered : is x covered by R+ U R- ?
         Yhat = np.zeros(int(self.N))
         Yhat[coverage.p] = 1
@@ -295,10 +213,12 @@ class HybridRuleSetClassifier(object):
         return  Yhat, TP, FP, TN, FN
 
 
+
     def __compute_objective(self, FN, FP, int_flag, nfeatures, prs, nrs, coverage):
         return (FN + FP) / self.N, \
                 (int_flag *(len(prs) + len(nrs)) + (1 - int_flag) * nfeatures),\
                 sum(~coverage.covered) / self.N
+
 
 
     def __propose_rs(self, Yhat, prs, nrs, coverage):# vt, print_message = False):
@@ -500,6 +420,7 @@ class HybridRuleSetClassifier(object):
         return return_rules
 
 
+
     def predict_with_type(self, X):
         """
         Predict classifications of the input samples X, along with a boolean (one per example)
@@ -523,10 +444,11 @@ class HybridRuleSetClassifier(object):
         prules = [self.prules[i] for i in self.positive_rule_set]
         nrules = [self.nrules[i] for i in self.negative_rule_set]
 
-        # if isinstance(self.df, scipy.sparse.csc.csc_matrix)==False:
-        Xn = 1 - X
-        Xn.columns = [name.strip() + 'neg' for name in X.columns]
-        X_test = pd.concat([X, Xn], axis=1)
+        if not self.premined_rules:
+            # if isinstance(self.df, scipy.sparse.csc.csc_matrix)==False:
+            Xn = 1 - X
+            Xn.columns = ['neg_' + name.strip() for name in X.columns]
+            X_test = pd.concat([X, Xn], axis=1)
 
         # Interpretable model
         if len(prules):
@@ -554,6 +476,7 @@ class HybridRuleSetClassifier(object):
         Yhat[nind] = 0
         Yhat[pind] = 1
         return Yhat, covered
+
 
 
     def predict(self, X):
@@ -594,37 +517,3 @@ def find_lt(a, x):
         return int(i-1)
     else:
         return 0
-
-
-def extract_rules(tree, feature_names):
-    left     = tree.tree_.children_left
-    right    = tree.tree_.children_right
-    features = [feature_names[i] for i in tree.tree_.feature]
-    # Get ids of leaf nodes
-    idx = np.argwhere(left == -1)[:, 0]
-
-    def recurse(left, right, child, lineage=None):          
-        if lineage is None:
-            lineage = []
-        if child in left:
-            parent = np.where(left == child)[0].item()
-            suffix = 'neg'
-        else:
-            parent = np.where(right == child)[0].item()
-            suffix = ''
-
-        lineage.append((features[parent].strip() + suffix))
-
-        if parent == 0:
-            lineage.reverse()
-            return lineage
-        else:
-            return recurse(left, right, parent, lineage)
-    
-    rules = []
-    for child in idx:
-        rule = []
-        for node in recurse(left, right, child):
-            rule.append(node)
-        rules.append(rule)
-    return rules
