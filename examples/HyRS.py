@@ -62,7 +62,7 @@ class HybridRuleSetClassifier(object):
 
 
     def fit(self, X, y, n_iteration=5000, T0=0.01, interpretability='size', print_progress=False, 
-                                                   random_state=42, premined_rules=False, n_pos_rules=0):
+                                                   random_state=42, premined_rules=False):
         """
         Build a HyRS from the training set (X, y).
 
@@ -78,10 +78,6 @@ class HybridRuleSetClassifier(object):
 
         premined_rules : Boolean
             Whether or not the features of X are already premined rules
-
-        n_pos_rules : int
-            If premined_rules=True, then assuming positive rules come before
-            negative ones, this variable describes the number of positive rules
 
         Returns
         -------
@@ -101,10 +97,10 @@ class HybridRuleSetClassifier(object):
         # If the feature are already rules that have been mined
         if premined_rules:
             all_rules = list(X.columns)
-            self.prules = all_rules[:n_pos_rules]
-            self.pRMatrix = X.iloc[:, :n_pos_rules]
-            self.nrules = all_rules[n_pos_rules:]
-            self.nRMatrix = X.iloc[:, n_pos_rules:]
+            self.prules = all_rules
+            self.pRMatrix = X.to_numpy()
+            self.nrules = all_rules
+            self.nRMatrix = self.pRMatrix
         # Otherwise mine the rules
         else:
             _, prules, nrules = generate_rulespace(X, y, self.max_card, random_state=random_state)
@@ -346,7 +342,10 @@ class HybridRuleSetClassifier(object):
                 for index, rule in enumerate(rules):
                     Yhat = ((all_sum - np.array(RMatrix[:, rule])) > 0).astype(int)
                     TP, FP, TN, FN = confusion_matrix(Yhat, Y).ravel()
-                    p.append(TP.astype(float) / (TP + FP))
+                    if TP+FP == 0:
+                        p.append(0)
+                    else:
+                        p.append(TP.astype(float) / (TP + FP))
                 p = np.exp(np.array([x - min(p) for x in p]))
                 p = np.insert(p, 0, 0)
                 p = np.array(list(accumulate(p)))
@@ -449,13 +448,18 @@ class HybridRuleSetClassifier(object):
             Xn = 1 - X
             Xn.columns = ['neg_' + name.strip() for name in X.columns]
             X_test = pd.concat([X, Xn], axis=1)
+        else:
+            X_test = X
 
         # Interpretable model
         if len(prules):
             # Does R+ cover these instances
             p = [[] for _ in prules]
             for i, rule in enumerate(prules):
-                p[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
+                if not self.premined_rules:
+                    p[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
+                else:
+                    p[i] = X_test[rule]
             p = (np.sum(p, axis=0) > 0).astype(int)
         else:
             p = np.zeros(len(Yb))
@@ -463,7 +467,10 @@ class HybridRuleSetClassifier(object):
             # Does R- cover these instances
             n = [[] for _ in nrules]
             for i, rule in enumerate(nrules):
-                n[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
+                if not self.premined_rules:
+                    n[i] = (np.sum(X_test[list(rule)], axis=1)==len(rule)).astype(int)
+                else:
+                    n[i] = X_test[rule]
             n = (np.sum(n, axis=0) > 0).astype(int)
         else:
             n = np.zeros(len(Yb))

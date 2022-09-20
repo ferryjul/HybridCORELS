@@ -9,7 +9,7 @@ from scipy.sparse import csc_matrix
 
 
 
-def generate_rulespace(X, y, max_card=2, neg_columns=False, method='fpgrowth', random_state=42):
+def generate_rulespace(X, y, max_card=2, min_support=1, neg_columns=False, method='fpgrowth', random_state=42):
     """
     Generate the set of all rules for a given task
 
@@ -19,10 +19,12 @@ def generate_rulespace(X, y, max_card=2, neg_columns=False, method='fpgrowth', r
         The training input samples. All features must be binary.
     y : array-like,  shape = [n_samples,]
         The binary target for the task
-    neg_columns : Boolean
-        Include the negation of X columns as well
     max_card : int
         The maximal cardinality of the rules
+    min_support : int
+        Minimum coverage of the rules (in percent e.g. 1, 5, etc.)
+    neg_columns : Boolean
+        Include the negation of X columns as well
     method : str
         Mining method is either 'rf' of 'fpgrowth'
 
@@ -30,33 +32,33 @@ def generate_rulespace(X, y, max_card=2, neg_columns=False, method='fpgrowth', r
     -------
     X : pd.DataFrame, shape = [n_samples, 2*n_features]
         The training input samples new features representing negation of existing columns.
-    prules, n_rules : List(str), lenght = n_rules
-        p_rule: Rules associated with positive predictions
-        p_rule: Rules associated with negative predictions
+    rules : List( List(str) ), lenght = n_rules
+        Rules are represented as a list of strings
+    coverage : List( float ), length = n_rules
+        Coverage of each rule in [0, 1]
     """
     
     # Rule Mining
     if method == 'fpgrowth': # Generate rules with fpgrowth
 
+        # FPGrowth treats each instance as a set of items [[1 2 3], [3 4], [4 6], ...]
+        itemMatrix = [[item for item in X.columns if row[item]==1] for _, row in X.iterrows()] 
+        tuple_rules = fpgrowth(itemMatrix, supp=min_support, zmin=1, zmax=max_card)
+        coverage = [float(rule[1] / X.shape[0]) for rule in tuple_rules]
+        rules = [list(rule[0]) for rule in tuple_rules]
+    
         if neg_columns:
-            # Add negation before applying FPGrowth
             X_neg = 1 - X
-            X_neg.columns = ['neg_' + name.strip() for name in X.columns]
+            neg_coverage = list(X_neg.mean(0))
+            neg_rules = ['neg_' + name.strip() for name in X.columns]
+            X_neg.columns = neg_rules
+
+            # Update rules
+            rules = rules + [[r] for r in neg_rules]
+            coverage = coverage + neg_coverage
             X = pd.concat([X, X_neg], axis=1)
 
-        # Rules frequent with positive and negative predictions
-        pindex = np.where(y==1)[0]
-        nindex = np.where(y!=1)[0]
         
-        # FPGrowth treats each instance as a set of items [[1 2 3], [3 4], [4 6], ...]
-        itemMatrix = [[item for item in X.columns if row[item]==1] for _,row in X.iterrows()] 
-
-        prules = fpgrowth([itemMatrix[i] for i in pindex], supp=-1, zmin=1, zmax=max_card)
-        prules = [np.sort(x[0]).tolist() for x in prules]
-        
-        nrules= fpgrowth([itemMatrix[i] for i in nindex], supp=-1, zmin=1, zmax=max_card)
-        nrules = [np.sort(x[0]).tolist() for x in nrules]
-    
     else: # Using Random Forests to mine rules
 
         # Rules associated with positive preditions
@@ -83,34 +85,34 @@ def generate_rulespace(X, y, max_card=2, neg_columns=False, method='fpgrowth', r
         X = pd.concat([X, X_neg], axis=1)
 
 
-    return X, prules, nrules
+    return X, rules, coverage
 
 
 
 
-def screen_rules(rules, X, N_rules, min_support):
+def screen_rules(rules, X, coverage, N_rules):
     """
     Filter rules based on minimum support and return
     new binary data.
 
     Arguments
     ---------
+    rules : List( List(str) ), lenght = n_rules
+        Rules are represented as a list of strings
     X : pd.DataFrame, shape = [n_samples, n_features]
         The training input samples. All features must be binary.
+        The rules must be subsets of columns of X.
     N_rules : int
         Maximum number of rules to consider
-    min_support : int
-        Minimum coverage of the rules (in percent e.g. 1, 5, etc.)
 
     Returns
     -------
-    rules : List(str)
-        list of all considered rules
     RMatrix : np.array, shape = [n_samples, N_rules]
         Binary matrix indicating if instance i satisfies rule j
+    rules : List(str)
+        list of all considered rules
     """
-    N = X.shape[0]
-    min_covered_examples = min_support / 100 * N
+    
     # Map column_name to column index
     itemInd = {}
     for i, name in enumerate(X.columns):
@@ -128,61 +130,16 @@ def screen_rules(rules, X, N_rules, min_support):
     lenMatrix = np.matrix([len_rules for _ in range(X.shape[0])])
     # Z_ij == 1 if instance i respects rule j
     Z = (mat == lenMatrix).astype(int)
-    # Coverage of each rule
     C = np.array(np.sum(Z, axis=0))[0]
-    
-    # Only keep the N_rules rules with sufficient coverage
-    supp_select = np.array([i for i in range(len(rules)) if C[i]>min_covered_examples], dtype=np.int32)
-    select = np.argsort(C[supp_select])[::-1][:N_rules].tolist()
-    ind = list(supp_select[select])
+    assert np.isclose(C/X.shape[0], coverage).all()
+
+    # Only keep the N_rules rules with largest coverage
+    ind = np.argsort(coverage)[::-1][:N_rules].tolist()
     rules = [rules[i] for i in ind]
     
     RMatrix = np.array(Z[:, ind]) 
     
-    return rules, RMatrix
-
-
-
-# Implementation from HyRS
-# def __screen_rules(self, rules, df, y, criteria='precision'):
-    #     """
-    #     Return a list of M rules and a (N, M) binary array where
-    #     a_ij represents wheter or not instance i respects rule j
-    #     """
-    #     # Store rules in a sparse matrix
-    #     itemInd = {}
-    #     for i, name in enumerate(df.columns):
-    #         itemInd[name] = int(i)
-    #     len_rules = [len(rule) for rule in rules]
-    #     indices = np.array(list(itertools.chain.from_iterable([[itemInd[x] for x in rule] for rule in rules])))
-    #     indptr = list(accumulate(len_rules))
-    #     indptr.insert(0, 0)
-    #     indptr = np.array(indptr)
-    #     data = np.ones(len(indices))
-    #     ruleMatrix = csc_matrix( (data, indices, indptr), shape=(len(df.columns), len(rules)) )
-
-    #     # mat = sparse.csr_matrix.dot(df,ruleMatrix)
-    #     # Multiply by the binarized data matrix to see which rules cover which instance
-    #     mat = np.matrix(df) * ruleMatrix
-    #     lenMatrix = np.matrix([len_rules for _ in range(df.shape[0])])
-    #     Z = (mat == lenMatrix).astype(int) # (n_instances, n_rules) binary matrix of cover(R_j, x_i)
-    #     Z_support = np.array(np.sum(Z, axis=0))[0] # Number of instances covered by each rule
-
-    #     # Compute the precision of each rule
-    #     Zpos = Z[y>0]
-    #     TP = np.array(np.sum(Zpos, axis=0))[0]
-    #     supp_select = np.where(TP >= self.min_support*sum(y)/100)[0] # Not sure what is going on !!!???
-    #     FP = Z_support - TP
-    #     precision = TP.astype(float) / (TP + FP)
-
-    #     # Select N rules with highest precision
-    #     supp_select = supp_select[precision[supp_select] > np.mean(y)]
-    #     select = np.argsort(-precision[supp_select])[:self.n_rules].tolist()
-    #     ind = list(supp_select[select])
-    #     rules = [rules[i] for i in ind]
-    #     RMatrix = np.array(Z[:, ind])
-
-    #     return rules, RMatrix
+    return RMatrix, rules
 
 
 
@@ -230,3 +187,16 @@ def accumulate(iterable, func=operator.add):
     for element in it:
         total = func(total, element)
         yield total
+
+
+
+def mine_rules_preprocessing(X, y, max_card, min_support, n_rules):
+    
+    X, rules, coverage = generate_rulespace(X, y, max_card=max_card, min_support=min_support, 
+                                            neg_columns=True, method="fpgrowth")
+    RMatrix, rules = screen_rules(rules, X, coverage, N_rules=n_rules)
+
+    # Reformat rules
+    rules = [" && ".join(rule) for rule in rules]
+    df = pd.DataFrame(RMatrix, columns=rules)
+    return df

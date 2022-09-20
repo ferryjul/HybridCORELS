@@ -301,7 +301,7 @@ class CRL(object):
 
         # If the feature are already rules that have been mined
         if premined_rules:
-            self.all_rules = list(X.columns)
+            self.all_rules = [[f] for f in X.columns]
             self.n_rules = X.shape[1]
             self.len_rules = [1 for _ in range(self.n_rules)]
         # Otherwise mine the rules

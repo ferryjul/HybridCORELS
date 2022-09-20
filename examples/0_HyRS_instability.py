@@ -8,6 +8,7 @@ import os
 import warnings
 warnings.filterwarnings("ignore")
 import argparse
+from exp_utils import get_data
 
 def main():
     
@@ -15,15 +16,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='compas', help='adult, compas')
     args = parser.parse_args()
 
-    df = pd.read_csv(f"data/{args.dataset}.csv", sep = ',')
-    X = df.iloc[:, :-1]
-    y = np.array(df.iloc[:, -1])
-
-    # Generate train and test sets
-    random_state_param = 42
-    train_proportion = 0.8
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_proportion, 
-                                                        shuffle=True, random_state=random_state_param+1)
+    X_train, X_test, y_train, y_test, _ = get_data(args.dataset)
 
 
     # Fit a black-box
@@ -35,9 +28,6 @@ def main():
 
     # Set parameters
     hparams = {
-        "n_rules" : 5000,
-        "min_support" : 1,
-        "max_card" : 2,
         "alpha" : 0.001,
         "beta" : 0.015
     }
@@ -51,7 +41,7 @@ def main():
         for i in res['seed']:
             hyb_model = HybridRuleSetClassifier(bbox, **hparams)
             # Train the hybrid model
-            hyb_model.fit(X_train, y_train, 100, random_state=random_state_param+i, T0=0.01)
+            hyb_model.fit(X_train, y_train, 200, random_state=23+i, T0=0.01, premined_rules=True)
 
             # Test performance
             _, covered_index = hyb_model.predict_with_type(X_test)
