@@ -1,0 +1,247 @@
+''' This file centralizes declarations for the different black-boxes used in our experiments
+The main object to be used is the BlackBox class '''
+
+# Create and train the hyperparameter-optimized black-box model
+from hyperopt import tpe, hp # , Trials
+from hyperopt.fmin import fmin
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.model_selection import train_test_split
+
+# hyperopt-sklearn declarations
+def _forest_classifier_criterion(name: str):
+    """
+    Declaration of search space 'criterion' parameter for
+     random forest classifier
+     extra trees classifier
+    """
+    return hp.choice(name, ["gini", "entropy"])
+
+
+def _forest_class_weight(name: str):
+    """
+    Declaration of search space 'class_weight' parameter for
+     random forest classifier
+     extra trees classifier
+    """
+    return hp.choice(name, ["balanced", "balanced_subsample", None])
+
+
+def _random_forest_regressor_criterion(name: str):
+    """
+    Declaration of search space 'criterion' parameter for
+     random forest regressor
+    Parameter 'poisson' is also available. Not implemented since
+     'poisson' is only available for non-negative y data
+    """
+    return hp.choice(name, ["squared_error", "absolute_error"])
+
+
+def _extra_trees_regressor_criterion(name: str):
+    """
+    Declaration of search space 'criterion' parameter for
+     extra trees regressor
+    """
+    return hp.choice(name, ["squared_error", "absolute_error"])
+
+
+def _forest_n_estimators(name: str):
+    """
+    Declaration search space 'n_estimators' parameter
+    """
+    return hp.qloguniform(name, np.log(9.5), np.log(3000.5), 1)
+
+
+def _forest_max_depth(name: str):
+    """
+    Declaration search space 'max_depth' parameter
+    """
+    return hp.pchoice(name, [
+        (0.7, None),  # most common choice.
+        (0.1, 2),  # try some shallow trees.
+        (0.1, 3),
+        (0.1, 4),
+    ])
+
+
+def _forest_min_samples_split(name: str):
+    """
+    Declaration search space 'min_samples_split' parameter
+    """
+    return hp.pchoice(name, [
+        (0.95, 2),  # most common choice
+        (0.05, 3),  # try minimal increase
+    ])
+
+
+def _forest_min_samples_leaf(name: str):
+    """
+    Declaration search space 'min_samples_leaf' parameter
+    """
+    return hp.choice(name, [
+        1,  # most common choice.
+        hp.qloguniform(name + ".gt1", np.log(1.5), np.log(50.5), 1)
+    ])
+
+
+def _forest_min_weight_fraction_leaf(name: str):
+    """
+    Declaration search space 'min_weight_fraction_leaf' parameter
+    """
+    return 0.0
+
+
+def _forest_max_features(name: str):
+    """
+    Declaration search space 'max_features' parameter
+    """
+    return hp.pchoice(name, [
+        (0.2, "sqrt"),  # most common choice.
+        (0.1, "log2"),  # less common choice.
+        (0.1, None),  # all features, less common choice.
+        (0.6, hp.uniform(name + ".frac", 0., 1.))
+    ])
+
+
+def _forest_max_leaf_nodes(name: str):
+    """
+    Declaration search space 'max_leaf_nodes' parameter
+    """
+    return hp.pchoice(name, [
+        (0.85, None),  # most common choice
+        (0.05, 5),
+        (0.05, 10),
+        (0.05, 15),
+    ])
+
+
+def _forest_min_impurity_decrease(name: str):
+    """
+    Declaration search space 'min_impurity_decrease' parameter
+    """
+    return hp.pchoice(name, [
+        (0.85, 0.0),  # most common choice
+        (0.05, 0.01),
+        (0.05, 0.02),
+        (0.05, 0.05),
+    ])
+
+
+def _forest_bootstrap(name: str):
+    """
+    Declaration search space 'bootstrap' parameter
+    """
+    return hp.choice(name, [True, False])
+
+
+def _forest_random_state(name: str):
+    """
+    Declaration search space 'random_state' parameter
+    """
+    return hp.randint(name, 5)
+
+def correct_names(best):
+    to_rename = []
+    for p in best.keys():
+        if '.' in p:
+            p_split = p.split('.')
+            p_new = p_split[0]
+            to_rename.append([p, p_new])
+    for ppnew in to_rename:
+        p = ppnew[0]
+        p_new = ppnew[1]
+        best[p_new] = best[p]
+        best.pop(p)
+
+    to_int_params = ['n_estimators', 'max_depth', 'min_samples_leaf', 'min_samples_split']
+    for p in to_int_params:
+        if not best[p] is None:
+            best[p] = int(best[p])
+
+    return best
+
+''' Here is the main object '''
+class BlackBox:
+    def __init__(self, bb_type, verbosity=False, random_state_value=42):
+        self.random_state_value = random_state_value
+        self.verbosity = verbosity
+        self.bb_type = bb_type
+            
+    def fit(self, X, y, sample_weight=None):
+        # define a validation set using one third of the data (and keep track of indices for the sample weights)
+        indices = np.arange(y.size)
+        (
+            X_train,
+            X_val,
+            y_train,
+            y_val,
+            indices_train,
+            indices_val,
+        ) = train_test_split(X, y, indices, test_size=(1/3))
+
+
+        if not sample_weight is None:
+            sample_weight_train = sample_weight[indices_train]
+        else:
+            sample_weight_train = None
+
+        # define the BB type
+        if self.bb_type == "random_forest":
+            # retrieve classifier object constructor
+            classifier_wrapper = RandomForestClassifier
+            
+            # define grid as is done inside hyperopt-sklearn
+            params={'n_estimators':_forest_n_estimators('n_estimators'),
+                    'max_depth':_forest_max_depth('max_depth'),
+                    'min_samples_leaf':_forest_min_samples_leaf('min_samples_leaf'),
+                    'min_samples_split':_forest_min_samples_split('min_samples_split'),
+                    'min_weight_fraction_leaf':_forest_min_weight_fraction_leaf('min_weight_fraction_leaf'),
+                    'max_features':_forest_max_features('max_features'),
+                    'max_leaf_nodes':_forest_max_leaf_nodes('max_leaf_nodes'),
+                    'min_impurity_decrease':_forest_min_impurity_decrease('min_impurity_decrease'),
+                    'bootstrap':_forest_bootstrap('bootstrap'),
+                    'criterion':_forest_classifier_criterion('criterion'),
+                    'class_weight':_forest_class_weight('class_weight')
+            }
+            to_int_params = ['n_estimators', 'max_depth', 'min_samples_leaf', 'min_samples_split']
+
+        elif self.bb_type == "ada_boost":
+            # retrieve classifier object constructor
+            classifier_wrapper = AdaBoostClassifier
+            # define grid as is done inside hyperopt-sklearn
+            # TODO
+        elif self.bb_type == "gradient_boost":
+            # retrieve classifier object constructor
+            classifier_wrapper = GradientBoostingClassifier
+            # define grid as is done inside hyperopt-sklearn
+            # TODO
+        
+        # find best params
+        def objective(params):
+            for p in to_int_params:
+                if not params[p] is None:
+                    params[p] = int(params[p])
+            model=classifier_wrapper(**params)
+            model.fit(X_train,y_train,sample_weight=sample_weight_train)
+            return (1.0 - model.score(X_val, y_val)) # minimize validation error
+          
+        #trials = Trials()
+
+        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=100,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
+
+        best = correct_names(best)
+
+        if self.verbosity:
+            print("Best Hyperparameters: ", best)
+
+        self.black_box_model = classifier_wrapper(**best)
+        self.black_box_model.fit(X, y, sample_weight=sample_weight)
+
+    def predict(self, X):
+        return self.black_box_model.predict(X)
+    
+    def score(self, X, y):
+        return self.black_box_model.score(X, y)
+
+    def __str__(self):
+        return str(self.black_box_model)
