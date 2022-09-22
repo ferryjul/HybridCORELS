@@ -21,6 +21,8 @@ else: # for local debug, fixed parameters
     size = 1
     verbositylist=["progress", "hybrid"]
     verbosity = True
+    #verbositylist = []
+    #verbosity = False
 #random_state_value = rank
 
 parser = argparse.ArgumentParser(description='Instability of HyRS')
@@ -52,7 +54,8 @@ min_coverage = worker_params[2]
 corels_params = {'policy':policy, 'max_card':1, 'c':cValue, 'n_iter':10**7, 'min_support':0.1, 'verbosity':verbositylist} #"progress"
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
-print("beta = ", beta_value)
+if verbosity:
+    print("beta = ", beta_value)
 
 res = []
 
@@ -107,7 +110,7 @@ for alpha_value in [0,5]: #alphaList:
             preds_test = hyb_model.predict(X_test)
             test_acc = np.mean(preds_test == y_test)
             black_box_accuracy_test= np.mean(preds_test[bb_indices_test] == y_test[bb_indices_test])
-
+        print("Expe: min_cov=%s" %min_coverage, "policy=%s" %policy, "c=%.3f" %cValue, "bb=%s"%black_box, "alpha=%.3f" %alpha_value, " done.")
         res.append([random_state_value, black_box, min_coverage, beta_value, alpha_value, policy, cValue, status, train_acc, test_acc, interpr_accuracy_train, interpr_accuracy_test, black_box_accuracy_train, black_box_accuracy_test, transparency_train, transparency_test, str(hyb_model), sparsity])
 
 # Gather the results for the 5 folds on process 0

@@ -150,7 +150,7 @@ def _gb_clf_loss(name: str):
     """
     Declaration search space 'loss' parameter for _gb classifier
     """
-    return hp.choice(name, ["deviance", "exponential"])
+    return hp.choice(name, ["log_loss", "exponential"])
 
 def _gb_learning_rate(name: str):
     """
