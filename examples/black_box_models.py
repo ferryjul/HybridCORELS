@@ -350,7 +350,7 @@ class BlackBox:
           
         #trials = Trials()
 
-        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=100,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
+        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=10,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
 
         best = correct_names(best, to_int_params)
 
