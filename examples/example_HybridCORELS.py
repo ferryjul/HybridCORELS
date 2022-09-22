@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
  # train data, last column is label
 parser.add_argument("--dataset", type= str, help = 'Dataset name. Options: adult, compas', default = 'compas')
 parser.add_argument("--method", type= str, help = 'pre or post, depending on the chosen paradigm', default = 'pre')
-parser.add_argument("--alpha_value", type= int, help = 'when method is pre, value for the alpha hyperparameter (specialization coefficient)', default = 0)
+parser.add_argument("--alpha_value", type= int, help = 'when method is pre, value for the alpha hyperparameter (specialization coefficient)', default = 3)
 parser.add_argument("--min_coverage", type=float, help = 'min_coverage constraint', default = 0.0)
 
 args = parser.parse_args()
@@ -60,7 +60,8 @@ def process(model, X, y):
 
 def sweep(min_coverage):
     from black_box_models import BlackBox
-    bbox = BlackBox("random_forest", verbosity=True) #RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=10)
+    # supported black-box types are: "random_forest", "ada_boost", "gradient_boost"
+    bbox = BlackBox("gradient_boost", verbosity=False, random_state_value=42) #RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=10)
 
     # To use the interp-then-bb-training paradigm:
     if method == "pre":
@@ -73,7 +74,6 @@ def sweep(min_coverage):
     hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
 
     print(hyb_model)
-    bbox = BlackBox("random_forest") #RandomForestClassifier(random_state=42,  min_samples_split=10, max_depth=10)
     process(hyb_model, X_test, y_test)
 
     #hyb_model.refit_black_box(X_train, y_train, alpha_value,  bbox)

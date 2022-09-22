@@ -1,5 +1,6 @@
 ''' This file centralizes declarations for the different black-boxes used in our experiments
-The main object to be used is the BlackBox class '''
+The main object to be used is the BlackBox class 
+Careful: if your version of sklearn is too old you might get errors! '''
 
 # Create and train the hyperparameter-optimized black-box model
 from hyperopt import tpe, hp # , Trials
@@ -17,7 +18,6 @@ def _forest_classifier_criterion(name: str):
     """
     return hp.choice(name, ["gini", "entropy"])
 
-
 def _forest_class_weight(name: str):
     """
     Declaration of search space 'class_weight' parameter for
@@ -25,7 +25,6 @@ def _forest_class_weight(name: str):
      extra trees classifier
     """
     return hp.choice(name, ["balanced", "balanced_subsample", None])
-
 
 def _random_forest_regressor_criterion(name: str):
     """
@@ -36,7 +35,6 @@ def _random_forest_regressor_criterion(name: str):
     """
     return hp.choice(name, ["squared_error", "absolute_error"])
 
-
 def _extra_trees_regressor_criterion(name: str):
     """
     Declaration of search space 'criterion' parameter for
@@ -44,13 +42,11 @@ def _extra_trees_regressor_criterion(name: str):
     """
     return hp.choice(name, ["squared_error", "absolute_error"])
 
-
 def _forest_n_estimators(name: str):
     """
     Declaration search space 'n_estimators' parameter
     """
     return hp.qloguniform(name, np.log(9.5), np.log(3000.5), 1)
-
 
 def _forest_max_depth(name: str):
     """
@@ -63,7 +59,6 @@ def _forest_max_depth(name: str):
         (0.1, 4),
     ])
 
-
 def _forest_min_samples_split(name: str):
     """
     Declaration search space 'min_samples_split' parameter
@@ -72,7 +67,6 @@ def _forest_min_samples_split(name: str):
         (0.95, 2),  # most common choice
         (0.05, 3),  # try minimal increase
     ])
-
 
 def _forest_min_samples_leaf(name: str):
     """
@@ -83,13 +77,11 @@ def _forest_min_samples_leaf(name: str):
         hp.qloguniform(name + ".gt1", np.log(1.5), np.log(50.5), 1)
     ])
 
-
 def _forest_min_weight_fraction_leaf(name: str):
     """
     Declaration search space 'min_weight_fraction_leaf' parameter
     """
     return 0.0
-
 
 def _forest_max_features(name: str):
     """
@@ -102,7 +94,6 @@ def _forest_max_features(name: str):
         (0.6, hp.uniform(name + ".frac", 0., 1.))
     ])
 
-
 def _forest_max_leaf_nodes(name: str):
     """
     Declaration search space 'max_leaf_nodes' parameter
@@ -113,7 +104,6 @@ def _forest_max_leaf_nodes(name: str):
         (0.05, 10),
         (0.05, 15),
     ])
-
 
 def _forest_min_impurity_decrease(name: str):
     """
@@ -126,13 +116,11 @@ def _forest_min_impurity_decrease(name: str):
         (0.05, 0.05),
     ])
 
-
 def _forest_bootstrap(name: str):
     """
     Declaration search space 'bootstrap' parameter
     """
     return hp.choice(name, [True, False])
-
 
 def _forest_random_state(name: str):
     """
@@ -140,7 +128,118 @@ def _forest_random_state(name: str):
     """
     return hp.randint(name, 5)
 
-def correct_names(best):
+def _weight_boosting_algorithm(name: str):
+    """
+    Declaration search space 'algorithm' parameter
+    """
+    return hp.choice(name, ["SAMME", "SAMME.R"])
+    
+def _weight_boosting_n_estimators(name: str):
+    """
+    Declaration search space 'n_estimators' parameter
+    """
+    return hp.qloguniform(name, np.log(10.5), np.log(1000.5), 1)
+
+def _weight_boosting_learning_rate(name: str):
+    """
+    Declaration search space 'learning_rate' parameter
+    """
+    return hp.lognormal(name, np.log(0.01), np.log(10.0))
+
+def _gb_clf_loss(name: str):
+    """
+    Declaration search space 'loss' parameter for _gb classifier
+    """
+    return hp.choice(name, ["deviance", "exponential"])
+
+def _gb_learning_rate(name: str):
+    """
+    Declaration search space 'learning_rate' parameter
+    """
+    return hp.lognormal(name, np.log(0.01), np.log(10.0))
+
+def _gb_n_estimators(name: str):
+    """
+    Declaration search space 'n_estimators' parameter
+    """
+    return hp.qloguniform(name, np.log(10.5), np.log(1000.5), 1)
+
+def _gb_criterion(name: str):
+    """
+    Declaration search space 'criterion' parameter
+    """
+    return hp.choice(name, ['friedman_mse', 'squared_error'])
+
+def _gb_min_samples_split(name: str):
+    """
+    Declaration search space 'min_samples_split' parameter
+    """
+    return hp.pchoice(name, [
+        (0.95, 2),  # most common choice
+        (0.05, 3),  # try minimal increase
+    ])
+
+def _gb_min_samples_leaf(name: str):
+    """
+    Declaration search space 'min_samples_leaf' parameter
+    """
+    return hp.choice(name, [
+        1,  # most common choice.
+        hp.qloguniform(name + ".gt1", np.log(1.5), np.log(50.5), 1)
+    ])
+
+def _gb_min_weight_fraction_leaf(name: str):
+    """
+    Declaration search space 'min_weight_fraction_leaf' parameter
+    """
+    return 0.0
+
+def _gb_max_depth(name: str):
+    """
+    Declaration search space 'max_depth' parameter
+    """
+    return hp.pchoice(name, [
+        (0.1, 2),
+        (0.7, 3),  # most common choice.
+        (0.1, 4),
+        (0.1, 5),
+    ])
+
+def _gb_min_impurity_decrease(name: str):
+    """
+    Declaration search space 'min_impurity_decrease' parameter
+    """
+    return hp.pchoice(name, [
+        (0.85, 0.0),  # most common choice
+        (0.05, 0.01),
+        (0.05, 0.02),
+        (0.05, 0.05),
+    ])
+
+def _gb_max_features(name: str):
+    """
+    Declaration search space 'max_features' parameter
+    """
+    return hp.pchoice(name, [
+        (0.2, "sqrt"),  # most common choice.
+        (0.1, "log2"),  # less common choice.
+        (0.1, None),  # all features, less common choice.
+        (0.6, hp.uniform(name + ".frac", 0., 1.))
+    ])
+
+def _gb_max_leaf_nodes(name: str):
+    """
+    Declaration search space 'max_leaf_nodes' parameter
+    """
+    return hp.pchoice(name, [
+        (0.85, None),  # most common choice
+        (0.05, 5),
+        (0.05, 10),
+        (0.05, 15),
+    ])
+
+
+def correct_names(best, to_int_params):
     to_rename = []
     for p in best.keys():
         if '.' in p:
@@ -152,8 +251,6 @@ def correct_names(best):
         p_new = ppnew[1]
         best[p_new] = best[p]
         best.pop(p)
-
-    to_int_params = ['n_estimators', 'max_depth', 'min_samples_leaf', 'min_samples_split']
     for p in to_int_params:
         if not best[p] is None:
             best[p] = int(best[p])
@@ -163,11 +260,18 @@ def correct_names(best):
 ''' Here is the main object '''
 class BlackBox:
     def __init__(self, bb_type, verbosity=False, random_state_value=42):
+        '''
+        Supported BB types: 
+            - "random_forest"
+            - "ada_boost"
+            - "gradient_boost"
+        '''
         self.random_state_value = random_state_value
         self.verbosity = verbosity
         self.bb_type = bb_type
             
     def fit(self, X, y, sample_weight=None):
+        # print("min sw = ", np.min(sample_weight), ", max sw = ", np.max(sample_weight))
         # define a validation set using one third of the data (and keep track of indices for the sample weights)
         indices = np.arange(y.size)
         (
@@ -208,19 +312,38 @@ class BlackBox:
         elif self.bb_type == "ada_boost":
             # retrieve classifier object constructor
             classifier_wrapper = AdaBoostClassifier
+
             # define grid as is done inside hyperopt-sklearn
-            # TODO
+            params={'algorithm':_weight_boosting_algorithm('algorithm'),
+            'n_estimators':_weight_boosting_n_estimators('n_estimators'),
+            'learning_rate':_weight_boosting_learning_rate('learning_rate')                    
+            }
+            to_int_params = ['n_estimators']
+
         elif self.bb_type == "gradient_boost":
             # retrieve classifier object constructor
             classifier_wrapper = GradientBoostingClassifier
             # define grid as is done inside hyperopt-sklearn
-            # TODO
+            params={'loss': _gb_clf_loss('loss'),
+            'learning_rate':_gb_learning_rate('learning_rate'),
+            'n_estimators':_gb_n_estimators('n_estimators'),
+            'criterion':_gb_criterion('criterion'),
+            'min_samples_split':_gb_min_samples_split('min_samples_split'),
+            'min_samples_leaf':_gb_min_samples_leaf('min_samples_leaf'),
+            'min_weight_fraction_leaf':_gb_min_weight_fraction_leaf('min_weight_fraction_leaf'),
+            'max_depth':_gb_max_depth('max_depth'),
+            'min_impurity_decrease':_gb_min_impurity_decrease('min_impurity_decrease'),
+            'max_features':_gb_max_features('max_features'),
+            'max_leaf_nodes':_gb_max_leaf_nodes('max_leaf_nodes')
+            }
+            to_int_params = ['min_samples_leaf', 'n_estimators']
         
         # find best params
         def objective(params):
             for p in to_int_params:
                 if not params[p] is None:
                     params[p] = int(params[p])
+            #print(params)
             model=classifier_wrapper(**params)
             model.fit(X_train,y_train,sample_weight=sample_weight_train)
             return (1.0 - model.score(X_val, y_val)) # minimize validation error
@@ -229,7 +352,7 @@ class BlackBox:
 
         best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=100,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
 
-        best = correct_names(best)
+        best = correct_names(best, to_int_params)
 
         if self.verbosity:
             print("Best Hyperparameters: ", best)
