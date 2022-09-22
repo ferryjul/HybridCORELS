@@ -26,10 +26,11 @@ else: # for local debug, fixed parameters
 #random_state_value = rank
 
 parser = argparse.ArgumentParser(description='Instability of HyRS')
-parser.add_argument('--dataset', type=str, default='compas', help='adult, compas')
+parser.add_argument('--dataset', type=int, default=0, help='1 for adult, 0 for compas')
 args = parser.parse_args()
-
-X_train, X_test, y_train, y_test, features, prediction = get_data(args.dataset)
+datasets = ["compas", "adult"]
+dataset_name = datasets[args.dataset]
+X_train, X_test, y_train, y_test, features, prediction = get_data(dataset_name)
 
 
 policies = ['objective', 'lower_bound', 'bfs']
@@ -60,8 +61,8 @@ if verbosity:
 res = []
 
 is_fitted_prefix = False
-for alpha_value in [0,5]: #alphaList:
-    for black_box in ['random_forest', 'ada_boost', 'gradient_boost']:
+for alpha_value in alphaList:
+    for black_box in ['random_forest']:#, 'ada_boost', 'gradient_boost']:
         if not is_fitted_prefix:
             # Create the hybrid model
             bbox = BlackBox(black_box, verbosity=verbosity, random_state_value=random_state_value)
@@ -119,7 +120,7 @@ if ccanada_expes:
 
 if rank == 0:
     # save results
-    fileName = './results/results_HybridCORELSPre_%s.csv' %(args.dataset) #_proportions
+    fileName = './results/results_HybridCORELSPre_%s.csv' %(dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)

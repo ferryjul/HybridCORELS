@@ -1,10 +1,11 @@
 #!/bin/bash
 
-#SBATCH -n 240
-#SBATCH --mem-per-cpu=8000
-#SBATCH --time=01:00:00
-#SBATCH --job-name=alpha_expes
+#SBATCH -n 60
+#SBATCH --mem-per-cpu=10000
+#SBATCH --time=20:00:00
+#SBATCH --job-name=expes_hycopre
 #SBATCH -o slurm_out/slurmout_%A.out
 #SBATCH -e slurm_out/slurmout_%A.errarray
+#SBATCH --array=0,1
 
-srun -W 3600 -n 240 python3.10 experiments_alpha_pre.py --dataset=adult
+srun -W 70000 -n 60 python3.10 expes_hybridcorelspre.py --dataset=${SLURM_ARRAY_TASK_ID}
