@@ -61,7 +61,7 @@ def process(model, X, y):
 def sweep(min_coverage):
     from black_box_models import BlackBox
     # supported black-box types are: "random_forest", "ada_boost", "gradient_boost"
-    bbox = BlackBox("gradient_boost", verbosity=False, random_state_value=42) #RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=10)
+    bbox = BlackBox("gradient_boost", verbosity=False, random_state_value=42, n_iter=10) #RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=10)
 
     # To use the interp-then-bb-training paradigm:
     if method == "pre":
@@ -75,6 +75,12 @@ def sweep(min_coverage):
 
     print(hyb_model)
     process(hyb_model, X_test, y_test)
+
+    # test save / load with pickle
+    #hyb_model.save("test_save_load")
+    #hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)#"progress"
+    #hyb_model = HybridCORELSPreClassifier.load("test_save_load")
+
 
     #hyb_model.refit_black_box(X_train, y_train, alpha_value,  bbox)
     #print("===================>> train perfs")

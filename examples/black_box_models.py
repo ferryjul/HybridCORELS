@@ -259,7 +259,7 @@ def correct_names(best, to_int_params):
 
 ''' Here is the main object '''
 class BlackBox:
-    def __init__(self, bb_type, verbosity=False, random_state_value=42):
+    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100):
         '''
         Supported BB types: 
             - "random_forest"
@@ -269,7 +269,8 @@ class BlackBox:
         self.random_state_value = random_state_value
         self.verbosity = verbosity
         self.bb_type = bb_type
-            
+        self.n_iter = n_iter
+        
     def fit(self, X, y, sample_weight=None):
         # print("min sw = ", np.min(sample_weight), ", max sw = ", np.max(sample_weight))
         # define a validation set using one third of the data (and keep track of indices for the sample weights)
@@ -350,7 +351,7 @@ class BlackBox:
           
         #trials = Trials()
 
-        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=100,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
+        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
 
         best = correct_names(best, to_int_params)
 

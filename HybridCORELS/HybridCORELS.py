@@ -3,6 +3,7 @@ from .PrefixCorels import PrefixCorelsPostClassifier
 from .utils import check_consistent_length, check_array, get_feature, check_in, check_features
 import numpy as np
 
+
 class HybridCORELSPreClassifier:
     """Hybrid Rule List/Black-box based classifier.
 
@@ -69,6 +70,27 @@ class HybridCORELSPreClassifier:
         self.is_fitted = False
         if "hybrid" in self.verbosity:
             print("Hybrid model created!")
+
+    def load(fname):
+        """
+        Load a HybridCORELSPreClassifier from a file, using python's pickle module.
+        
+        Parameters
+        ----------
+        fname : string
+            File name to load the rulelist from
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+        with open(fname, "rb") as f:
+            loaded_object = pickle.load(f)
+        if type(loaded_object) != HybridCORELSPreClassifier:
+            raise TypeError("Loaded object of type %s from file %s, expected <class 'HybridCORELS.HybridCORELS.HybridCORELSPreClassifier'>" %(type(loaded_object), fname))
+        else:
+            return loaded_object
 
     def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False):
         """
@@ -361,6 +383,26 @@ class HybridCORELSPreClassifier:
 
     def get_status(self):
         return self.interpretable_part.get_status()
+
+    def save(self, fname):
+        """
+        Save the model to a file, using python's pickle module.
+
+        Parameters
+        ----------
+        fname : string
+            File name to store the model in
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+
+        with open(fname, "wb") as f:
+            pickle.dump(self, f)
+
+        return self
 
 class HybridCORELSPostClassifier:
     """Hybrid Rule List/Black-box based classifier.
