@@ -96,7 +96,8 @@ class PrefixCorelsPreClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, lb_mode='tight'):
+                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, 
+                 min_coverage=0.0, lb_mode='tight'):
         self.c = c
         self.n_iter = n_iter
         self.map_type = map_type
@@ -108,8 +109,9 @@ class PrefixCorelsPreClassifier:
         self.beta=beta
         self.min_coverage = min_coverage
         self.lb_mode = lb_mode
+        self.status = 3
 
-    def fit(self, X, y, features=[], prediction_name="prediction"):
+    def fit(self, X, y, features=[], prediction_name="prediction", time_limit = None, memory_limit=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -129,6 +131,11 @@ class PrefixCorelsPreClassifier:
 
         prediction_name : string, optional(default="prediction")
             The name of the feature that is being predicted.
+
+        time_limit : int, maximum number of seconds allowed for the model building
+        Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
+
+        memory_limit: int, maximum memory use (in MB)
 
         Returns
         -------
@@ -260,9 +267,37 @@ class PrefixCorelsPreClassifier:
         
         if fr:
             early = False
+            if not (memory_limit is None):
+                import os, psutil
             try:
-                while fit_wrap_loop(self.n_iter):
-                    pass
+                if time_limit is None: 
+                    exitCode = 0
+                    while exitCode == 0:
+                        exitCode = fit_wrap_loop(self.n_iter)
+                        if not (memory_limit is None):
+                            mem_used = (psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+                            if mem_used > memory_limit:
+                                exitCode = 5
+                                print("Exiting because max memory used is reached :", mem_used, " MB/ ", memory_limit, " MB")
+                    self.status = exitCode
+                else:
+                    import time
+                    start = time.process_time() #clock()
+                    exitCode = 0
+                    while exitCode == 0:
+                        exitCode = fit_wrap_loop(self.n_iter)
+                        end = time.process_time() #clock()
+                        if not (memory_limit is None):
+                            mem_used = (psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+                            if mem_used > memory_limit:
+                                exitCode = 5
+                                print("Exiting because max memory used is reached :", mem_used, " MB/ ", memory_limit, " MB")
+                        if end - start > time_limit:
+                            exitCode = 4
+                            if "progress" in self.verbosity:
+                                print("Exiting because CPU time limit is reached (", end - start, " seconds / ", time_limit, ".")
+                            break
+                    self.status = exitCode
             except:
                 print("\nExiting early")
                 rl.rules = fit_wrap_end(True)
@@ -507,9 +542,15 @@ class PrefixCorelsPreClassifier:
         return s
 
     def get_status(self): 
-        status = get_search_status() # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
+        status = self.status #get_search_status() # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
         if status == 0:
             return "exploration running"
+        elif status == 3:
+            return "not_fitted"
+        elif status == 4:
+            return "time_out"
+        elif status == 5:
+            return "memory_out"
         elif status == -1:
             return "max_nodes_reached"
         elif status == -2:
@@ -617,8 +658,9 @@ class PrefixCorelsPostClassifier:
         self.min_support = min_support
         self.beta=beta
         self.min_coverage = min_coverage
+        self.status = 3
 
-    def fit(self, X, y, bb_errors, features=[], prediction_name="prediction"):
+    def fit(self, X, y, bb_errors, features=[], prediction_name="prediction", time_limit = None, memory_limit=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -641,6 +683,11 @@ class PrefixCorelsPostClassifier:
 
         prediction_name : string, optional(default="prediction")
             The name of the feature that is being predicted.
+
+        time_limit : int, maximum number of seconds allowed for the model building
+        Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
+
+        memory_limit: int, maximum memory use (in MB)
 
         Returns
         -------
@@ -773,9 +820,37 @@ class PrefixCorelsPostClassifier:
         
         if fr:
             early = False
+            if not (memory_limit is None):
+                import os, psutil
             try:
-                while fit_wrap_loop(self.n_iter):
-                    pass
+                if time_limit is None: 
+                    exitCode = 0
+                    while exitCode == 0:
+                        exitCode = fit_wrap_loop(self.n_iter)
+                        if not (memory_limit is None):
+                            mem_used = (psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+                            if mem_used > memory_limit:
+                                exitCode = 5
+                                print("Exiting because max memory used is reached :", mem_used, " MB/ ", memory_limit, " MB")
+                    self.status = exitCode
+                else:
+                    import time
+                    start = time.process_time() #clock()
+                    exitCode = 0
+                    while exitCode == 0:
+                        exitCode = fit_wrap_loop(self.n_iter)
+                        end = time.process_time() #clock()
+                        if not (memory_limit is None):
+                            mem_used = (psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+                            if mem_used > memory_limit:
+                                exitCode = 5
+                                print("Exiting because max memory used is reached :", mem_used, " MB/ ", memory_limit, " MB")
+                        if end - start > time_limit:
+                            exitCode = 4
+                            if "progress" in self.verbosity:
+                                print("Exiting because CPU time limit is reached (", end - start, " seconds / ", time_limit, ".")
+                            break
+                    self.status = exitCode
             except:
                 print("\nExiting early")
                 rl.rules = fit_wrap_end(True)
@@ -1019,4 +1094,22 @@ class PrefixCorelsPostClassifier:
 
         return s
 
+    def get_status(self): 
+        status = self.status #get_search_status() # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
+        if status == 0:
+            return "exploration running"
+        elif status == 3:
+            return "not_fitted"
+        elif status == 4:
+            return "time_out"
+        elif status == 5:
+            return "memory_out"
+        elif status == -1:
+            return "max_nodes_reached"
+        elif status == -2:
+            return "opt"
+        elif status == -10:
+            return "exploration_not_started"
+        else:
+            return "unknown"
 

@@ -92,7 +92,7 @@ class HybridCORELSPreClassifier:
         else:
             return loaded_object
 
-    def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False):
+    def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False, time_limit = None, memory_limit=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -113,6 +113,13 @@ class HybridCORELSPreClassifier:
         prediction_name : string, optional(default="prediction")
             The name of the feature that is being predicted.
 
+        time_limit : int, maximum number of seconds allowed for the model building 
+        (this timeout considers only the interpretable part building using the modified CORELS algorithm)
+        Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
+
+        memory_limit: int, maximum memory use (in MB)
+        (this memory limit considers only the interpretable part building using the modified CORELS algorithm)
+
         Returns
         -------
         self : obj
@@ -120,7 +127,7 @@ class HybridCORELSPreClassifier:
         # 1) Fit the interpretable part of the Hybrid model
         if "hybrid" in self.verbosity:
             print("Fitting the interpretable part...")
-        self.interpretable_part.fit(X, y, features, prediction_name)
+        self.interpretable_part.fit(X, y, features, prediction_name, time_limit=time_limit, memory_limit=memory_limit)
 
         # 2) Fit the black-box part of the Hybrid model (using examples not determined by the interpretable part)
         # Retrieve only examples not captured by the interpretable part
@@ -478,7 +485,28 @@ class HybridCORELSPostClassifier:
         if "hybrid" in self.verbosity:
             print("Hybrid model created!")
 
-    def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False):
+    def load(fname):
+        """
+        Load a HybridCORELSPostClassifier from a file, using python's pickle module.
+        
+        Parameters
+        ----------
+        fname : string
+            File name to load the rulelist from
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+        with open(fname, "rb") as f:
+            loaded_object = pickle.load(f)
+        if type(loaded_object) != HybridCORELSPostClassifier:
+            raise TypeError("Loaded object of type %s from file %s, expected <class 'HybridCORELS.HybridCORELS.HybridCORELSPostClassifier'>" %(type(loaded_object), fname))
+        else:
+            return loaded_object
+
+    def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False, time_limit = None, memory_limit=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -499,6 +527,13 @@ class HybridCORELSPostClassifier:
         prediction_name : string, optional(default="prediction")
             The name of the feature that is being predicted.
 
+        time_limit : int, maximum number of seconds allowed for the model building 
+        (this timeout considers only the interpretable part building using the modified CORELS algorithm)
+        Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
+
+        memory_limit: int, maximum memory use (in MB)
+        (this memory limit considers only the interpretable part building using the modified CORELS algorithm)
+
         Returns
         -------
         self : obj
@@ -516,7 +551,7 @@ class HybridCORELSPostClassifier:
         # 2) Fit the interpretable part of the model
         if "hybrid" in self.verbosity:
             print("Fitting the interpretable part...")
-        self.interpretable_part.fit(X, y, bb_errors, features, prediction_name)
+        self.interpretable_part.fit(X, y, bb_errors, features, prediction_name, time_limit=time_limit, memory_limit=memory_limit)
 
         interpretable_predictions = self.interpretable_part.predict(X)
         not_captured_indices = np.where(interpretable_predictions == 2)
@@ -525,12 +560,9 @@ class HybridCORELSPostClassifier:
             print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
             print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
 
-        # Old way: fit black-box only on uncaptured examples only
+        # Finally set the black-box metrics
         X_not_captured = X[not_captured_indices]
         y_not_captured = y[not_captured_indices]
-        #self.black_box_part.fit(X_not_captured, y_not_captured)
-
-        # Finally set the black-box metrics
         self.black_box_support = not_captured_indices[0].size # Proportion of training examples falling into the black-box part
         if not_captured_indices[0].size > 0:
             self.black_box_accuracy = self.black_box_part.score(X_not_captured, y_not_captured) # Black-Box accuracy on these examples
@@ -688,3 +720,26 @@ class HybridCORELSPostClassifier:
 
     def get_sparsity(self):
         return len(self.interpretable_part.rl_.rules)-1
+
+    def get_status(self):
+        return self.interpretable_part.get_status()
+
+    def save(self, fname):
+        """
+        Save the model to a file, using python's pickle module.
+
+        Parameters
+        ----------
+        fname : string
+            File name to store the model in
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+
+        with open(fname, "wb") as f:
+            pickle.dump(self, f)
+
+        return self

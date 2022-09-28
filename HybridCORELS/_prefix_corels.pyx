@@ -476,7 +476,7 @@ def fit_wrap_loop(size_t max_nodes):
     # This is where the magic happens
     # return (run_corels_loop(max_num_nodes, pmap, tree, queue) != -1)
     search_status = run_corels_loop(max_num_nodes, pmap, tree, queue)
-    return (search_status == 0)
+    return search_status #(search_status == 0)
 
 def get_search_status(): # 0 for keep going, -1 for n_iter reached, -2 for opt reached and proved, -10 for not exploration not started yet
     global search_status

@@ -35,7 +35,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_
 
 #min_support=0.05, max_card=2, alpha=0.001
 # Set parameters
-corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.1, 'verbosity':["progress", "hybrid"]} #"progress"
+corels_params = {'policy':"lower_bound", 'max_card':1, 'c':0.001, 'n_iter':10**7, 'min_support':0.05, 'verbosity':["progress", "hybrid"]} #"progress"
 
 # Define a hybrid model
 
@@ -69,11 +69,13 @@ def sweep(min_coverage):
     # To use the bb-then-interpr-training paradigm:
     elif method == "post":
         hyb_model = HybridCORELSPostClassifier(black_box_classifier=bbox, beta=beta_value, min_coverage=min_coverage, bb_pretrained=False, **corels_params)#"progress"
-   
+    
     # Train the hybrid model
-    hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction)
+    hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction, time_limit=10, memory_limit=1000) # max. 10 sec or 1GB memory use to train the prefix (interpretable part of the hybrid model)
 
     print(hyb_model)
+    print("Status = ", hyb_model.get_status())
+
     process(hyb_model, X_test, y_test)
 
     # test save / load with pickle
