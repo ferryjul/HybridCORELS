@@ -259,17 +259,34 @@ def correct_names(best, to_int_params):
 
 ''' Here is the main object '''
 class BlackBox:
-    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100):
+    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100, time_limit=None):
         '''
-        Supported BB types: 
-            - "random_forest"
-            - "ada_boost"
-            - "gradient_boost"
+        bb_type: str, type of black-box model to be trained
+            Supported BB types: 
+                - "random_forest"
+                - "ada_boost"
+                - "gradient_boost"
+        
+        verbosity: bool (default False)
+            To print useful information: True
+            To print nothing: False
+        
+        random_state_value: int (default 42)
+            Seed to initialize all random processes.
+            Fix a value for reproducibility.
+
+        n_iter: int (default 100)
+            Number of iterations for Hyperopt's Fmin function.
+
+        time_limit: None or int (default None)
+            Maximum training time (approx. time of call to fit())
+            None for no limit or int value in #seconds.        
         '''
         self.random_state_value = random_state_value
         self.verbosity = verbosity
         self.bb_type = bb_type
         self.n_iter = n_iter
+        self.time_limit = time_limit
         
     def fit(self, X, y, sample_weight=None):
         # print("min sw = ", np.min(sample_weight), ", max sw = ", np.max(sample_weight))
@@ -351,7 +368,7 @@ class BlackBox:
           
         #trials = Trials()
 
-        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False) # trials=trials,  
+        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False, timeout=self.time_limit) # trials=trials,  
 
         best = correct_names(best, to_int_params)
 
