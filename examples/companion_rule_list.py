@@ -64,6 +64,7 @@ class CRL(object):
         self.bbox = bbox
         self.min_support = min_support
         self.max_card = max_card
+        assert alpha < 1, "The parameter alpha must be in the interval [0, 1)"
         self.alpha = alpha
 
         # List of bitarrays indicating whether or not rule i covers example j
@@ -210,7 +211,7 @@ class CRL(object):
         return new_coverage
     
 
-    def __obj_func(self, coverage, Alpha):
+    def __obj_func(self, coverage):
         
         # Length of rulelist
         k = len(coverage.rule_cover)
@@ -218,7 +219,7 @@ class CRL(object):
         obj = (coverage.A[0] + self.BLX_ACC) * sum(coverage.rule_catch[0])#
         obj += sum([(coverage.A[i] + coverage.A[i-1]) * sum(coverage.rule_catch[i]) for i in range(1, k)])
         obj *= 0.5 / self.N
-        obj -= Alpha*k
+        obj -= self.alpha * k
         return obj
 
 
@@ -228,15 +229,15 @@ class CRL(object):
         # Temperature
         temperature = T0
         
-        # Current and optimal objectives
-        obj_curr = 0.1
+        # Optimal objective
         obj_best = 0
         
-        # Init coverage
+        # Initialization
         curr_coverage = Coverage()
         curr_rule_idx = init_rule_idx
         curr_coverage = self.__update_support(curr_rule_idx, [], curr_coverage)
-        
+        obj_curr = self.__obj_func(curr_coverage)
+
         # Main iteration
         for t in tqdm(range(iteration)):
             # Randomly perturb the current rulelist
@@ -246,7 +247,7 @@ class CRL(object):
             new_coverage = self.__update_support(new_rule_idx, curr_rule_idx, curr_coverage)
 
             # Compute objective
-            obj_new = self.__obj_func(new_coverage, self.alpha)
+            obj_new = self.__obj_func(new_coverage)
             
             if obj_new > obj_curr:
                 # Accept the change

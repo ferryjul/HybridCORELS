@@ -2,28 +2,27 @@ import argparse
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from HyRS import HybridRuleSetClassifier
 import os
 import warnings
 warnings.filterwarnings("ignore")
 import argparse
-from exp_utils import get_data
+from exp_utils import get_data, to_df
 
 def main():
     
     parser = argparse.ArgumentParser(description='Instability of HyRS')
-    parser.add_argument('--dataset', type=str, default='compas', help='adult, compas')
+    parser.add_argument('--dataset', type=str, default='adult', help='adult, compas')
     args = parser.parse_args()
 
-    X_train, X_test, y_train, y_test, _ = get_data(args.dataset)
-
+    X, y, features, _ = get_data(args.dataset, {"train" : 0.8, "test" : 0.2})
+    df_X = to_df(X, features)
 
     # Fit a black-box
     bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
-    bbox.fit(X_train, y_train)
+    bbox.fit(df_X["train"], y["train"])
     # Test performance
-    print("BB Accuracy : ", np.mean(bbox.predict(X_test) == y_test), "\n")
+    print("BB Accuracy : ", np.mean(bbox.predict(df_X["test"]) == y["test"]), "\n")
 
 
     # Set parameters
@@ -40,12 +39,15 @@ def main():
         res = {'coverage' : [], 'seed' : np.arange(nreps), 'beta' : beta * np.ones(nreps)}
         for i in res['seed']:
             hyb_model = HybridRuleSetClassifier(bbox, **hparams)
-            # Train the hybrid model
-            hyb_model.fit(X_train, y_train, 200, random_state=23+i, T0=0.01, premined_rules=True)
-
-            # Test performance
-            _, covered_index = hyb_model.predict_with_type(X_test)
-            res['coverage'].append(np.sum(covered_index) / len(covered_index))
+            try:
+                # Train the hybrid model
+                hyb_model.fit(df_X["train"], y["train"], 200, random_state=23+i, T0=0.01, premined_rules=True)
+            except:
+                pass
+            else:
+                # Save Test performance
+                _, covered_index = hyb_model.predict_with_type(df_X["test"])
+                res['coverage'].append(np.sum(covered_index) / len(covered_index))
         return pd.DataFrame(res)
 
 

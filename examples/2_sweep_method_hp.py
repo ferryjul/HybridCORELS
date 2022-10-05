@@ -3,32 +3,35 @@ import pandas as pd
 from companion_rule_list import CRL
 from HyRS import HybridRuleSetClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+import argparse
+import os
 
 import warnings
 warnings.filterwarnings("ignore")
 
-import argparse
-import os
+from exp_utils import get_data, to_df
+
 
 
 
 # Process results of CRL
-def results_crl(bbox, X_train, y_train, X_test, y_test, hparams_crl, init_temperature):
-    hyb_model = CRL(bbox, **hparams_crl)
+def results_crl(bbox, df_X, y, alpha, init_temperature):
+    hyb_model = CRL(bbox, alpha=alpha)
     # Train the hybrid model
-    hyb_model.fit(X_train, y_train, 50000, init_temperature, random_state=3, print_progress=True)
+    hyb_model.fit(df_X["train"], y["train"], 50000, init_temperature, random_state=3, premined_rules=True)
     # Evaluate the hybrid model
-    output_rules, rule_coverage, overall_accuracy = hyb_model.test(X_test, y_test)
+    output_rules, rule_coverage_v, overall_accuracy_v = hyb_model.test(df_X["valid"], y["valid"])
+    _, rule_coverage_t, overall_accuracy_t = hyb_model.test(df_X["test"], y["test"])
 
     row_list = []
     
     for i in range(len(output_rules)):
         row = {}
-        row['accuracy'] = overall_accuracy[i]
-        row['transparency'] = rule_coverage[i]
+        row['accuracy_valid'] = overall_accuracy_v[i]
+        row['transparency_valid'] = rule_coverage_v[i]
+        row['accuracy_test'] = overall_accuracy_t[i]
+        row['transparency_test'] = rule_coverage_t[i]
         row_list.append(row)
-        print(f"acc:  {str(overall_accuracy[i])}, transp.:  {str(rule_coverage[i])}")
     df_res = pd.DataFrame(row_list)
 
     return df_res
@@ -36,19 +39,27 @@ def results_crl(bbox, X_train, y_train, X_test, y_test, hparams_crl, init_temper
 
 
 # Process results of CRL
-def results_hyrs(bbox, X_train, y_train, X_test, y_test, hparams_hyrs, init_temperature, seed):
+def results_hyrs(bbox, df_X, y, hparams_hyrs, init_temperature, seed):
     # Define a hybrid model
     hyb_model = HybridRuleSetClassifier(bbox, **hparams_hyrs)
 
     # Train the hybrid model
-    hyb_model.fit(X_train, y_train, 100, random_state=seed, T0=init_temperature)
+    hyb_model.fit(df_X["train"], y["train"], 500, random_state=seed, T0=init_temperature, premined_rules=True)
+
+    # Valid performance
+    yhat, covered_index = hyb_model.predict_with_type(df_X["valid"])
+    overall_acc_v = np.mean(yhat == y["valid"]) 
+    rule_coverage_v = np.sum(covered_index) / len(covered_index)
+
     # Test performance
-    yhat, covered_index = hyb_model.predict_with_type(X_test)
-    overall_accuracy = np.mean(yhat == y_test) 
-    rule_coverage = np.sum(covered_index) / len(covered_index)
+    yhat, covered_index = hyb_model.predict_with_type(df_X["test"])
+    overall_acc_t = np.mean(yhat == y["test"]) 
+    rule_coverage_t = np.sum(covered_index) / len(covered_index)
 
     # Store in dataframe
-    df_res = pd.DataFrame([[overall_accuracy, rule_coverage]], columns=['accuracy', 'transparency'])
+    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t]], 
+                            columns=['accuracy_valid', 'transparency_valid',
+                                     'accuracy_test', 'transparency_test'])
 
     return df_res
 
@@ -61,45 +72,31 @@ def main():
     parser.add_argument("--method", type=str, help='Method name. Options: hyrs, crl', default='hyrs')
     args = parser.parse_args()
 
-    df = pd.read_csv(f"data/{args.dataset}.csv", sep = ',')
-    X = df.iloc[:, :-1]
-    y = np.array(df.iloc[:, -1])
-
-    # Generate train and test sets
-    random_state_param = 42
-    train_proportion = 0.8
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1.0 - train_proportion, 
-                                                            shuffle=True, random_state=random_state_param+1)
+    X, y, features, _ = get_data(args.dataset, {"train" : 0.7,  "valid" : 0.15, "test" : 0.15})
+    df_X = to_df(X, features)
 
     # Fit a black-box
     bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
-    bbox.fit(X_train, y_train)
-    bbox_accuracy = np.mean(bbox.predict(X_test) == y_test) 
+    bbox.fit(df_X["train"], y["train"])
+    bbox_acc_v = np.mean(bbox.predict(df_X["valid"]) == y["valid"])
+    bbox_acc_t = np.mean(bbox.predict(df_X["test"]) == y["test"])
     # Evaluate the black box
-    df = pd.DataFrame([[bbox_accuracy, 0]], columns=['accuracy', 'transparency'])
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
+                                                                 'accuracy_test', 'transparency_test'])
 
     # Explore the space of possible hybrid models
     if args.method == "crl":
         # Set parameters
-        hparams_crl = {
-            "min_support" : 0.05,
-            "max_card" : 2,
-            "alpha" : 0.001
-        }
         temperatures = np.linspace(0.001, 0.01, num=10)
-        alphas = np.logspace(0.001, -1, 10)
+        alphas = np.logspace(-3, -1, 10)
         for temperature in temperatures:
             for alpha in alphas:
                 print(temperature, alpha)
-                hparams_crl['alpha'] = alpha
-                df = pd.concat([df, results_crl(X_train, y_train, X_test, y_test, hparams_crl, temperature)])
+                df = pd.concat([df, results_crl(bbox, df_X, y, alpha, temperature)])
     
     elif args.method == "hyrs":
         # Set parameters
         hparams_hyrs = {
-            "n_rules" : 5000,
-            "min_support" : 1,
-            "max_card" : 2,
             "alpha" : 0.001,
             "beta" : 0.015
         }
@@ -113,7 +110,7 @@ def main():
                     print(alpha, beta, seed)
                     hparams_hyrs['alpha'] = alpha
                     hparams_hyrs['beta'] = beta
-                    df = pd.concat([df, results_hyrs(bbox, X_train, y_train, X_test, y_test, hparams_hyrs, 0.01, seed)])
+                    df = pd.concat([df, results_hyrs(bbox, df_X, y, hparams_hyrs, 0.01, seed)])
 
     #save direcory
     save_dir = os.path.join("results", "acc_cov")
