@@ -5,7 +5,7 @@ from HybridCORELS import *
 import numpy as np 
 from sklearn.ensemble import RandomForestClassifier
 
-interpr_tout = 3600 #3600 # seconds
+interpr_tout = 10 #3600 #3600 # seconds
 interpr_mem = 5000 # MB
 
 if ccanada_expes: # one core performs operations for all values of alpha for all black-boxes
@@ -86,7 +86,7 @@ hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value
 hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction, time_limit=interpr_tout, memory_limit=interpr_mem)
 
 # Compute and save all metrics
-hyb_model.save("./models_save/prefix_%s_%.3f_%.5f_%d_%.2f_%s" %(dataset_name, min_coverage, cValue, n_iter_param, min_support_param, policy))
+hyb_model.save("./models_save/prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s" %(dataset_name, random_state_value, min_coverage, cValue, n_iter_param, min_support_param, policy))
 
 # Train set
 preds_train, preds_types_train = hyb_model.predict_with_type(X_train)
