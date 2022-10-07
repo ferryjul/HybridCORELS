@@ -304,8 +304,10 @@ class BlackBox:
 
         if not sample_weight is None:
             sample_weight_train = sample_weight[indices_train]
+            sample_weight_val = sample_weight[indices_val]
         else:
             sample_weight_train = None
+            sample_weight_val = None
 
         # define the BB type
         if self.bb_type == "random_forest":
@@ -364,7 +366,7 @@ class BlackBox:
             #print(params)
             model=classifier_wrapper(**params)
             model.fit(X_train,y_train,sample_weight=sample_weight_train)
-            return (1.0 - model.score(X_val, y_val)) # minimize validation error
+            return (1.0 - model.score(X_val, y_val, sample_weight=sample_weight_val)) # minimize validation error
           
         #trials = Trials()
 

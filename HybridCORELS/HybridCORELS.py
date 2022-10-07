@@ -175,7 +175,7 @@ class HybridCORELSPreClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority)
+                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_accuracy = 1.00            
         # Done!
@@ -212,10 +212,10 @@ class HybridCORELSPreClassifier:
         interpretable_predictions = self.interpretable_part.predict(X)
         not_captured_indices = np.where(interpretable_predictions == 2)
         captured_indices = np.where(interpretable_predictions < 2)
-        if "hybrid" in self.verbosity:
-            print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
-            print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
-            print("Fitting the black-box part on examples not captured by the interpretable part...")
+        #if "hybrid" in self.verbosity:
+        #    print("Interpretable part coverage = ", (y.size-not_captured_indices[0].size)/y.size)
+        #    print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
+        #    print("Fitting the black-box part on examples not captured by the interpretable part...")
 
         # Old way: fit black-box only on uncaptured examples only
         X_not_captured = X[not_captured_indices]
@@ -239,7 +239,7 @@ class HybridCORELSPreClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority)
+                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_accuracy = 1.00            
         # Done!
@@ -569,7 +569,7 @@ class HybridCORELSPostClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority)
+                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_accuracy = 1.00            
 
