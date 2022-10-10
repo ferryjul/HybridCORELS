@@ -5,7 +5,7 @@ from HybridCORELS import *
 import numpy as np 
 from sklearn.ensemble import RandomForestClassifier
 
-interpr_tout = 10 #3600 #3600 # seconds
+interpr_tout = 3600 #3600 #3600 # seconds
 interpr_mem = 5000 # MB
 
 if ccanada_expes: # one core performs operations for all values of alpha for all black-boxes
@@ -54,7 +54,7 @@ if not ccanada_expes:
 
 worker_params = paramsList[rank]
 policy = worker_params[0]
-cValue =worker_params[1]
+cValue = worker_params[1]
 min_coverage = worker_params[2]
 random_state_value = worker_params[3]
 min_support_param = worker_params[4]
