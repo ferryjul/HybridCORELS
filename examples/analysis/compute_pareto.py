@@ -73,10 +73,9 @@ def main():
     # Parser initialization
     parser = argparse.ArgumentParser(description='Analysis of the results')
     parser.add_argument('--dataset', type=str, default='compas', help='adult, compas')
+    parser.add_argument("--bbox", type=str, help='Black box. Options: random_forest, ada_boost, gradient_boost', default='random_forest')
     # parser.add_argument('--method', type=str, default='hyrs', help='hybrid model. Options: crl, hyrs, hycorels')
-
     args = parser.parse_args()
-    dataset = args.dataset
 
     # #save direcory
     # save_dir = "./results/pareto/{}".format(method)
@@ -86,7 +85,7 @@ def main():
     methods = ["hyrs", "crl"]
     dfs = []
     for method in methods:
-        input_file = f"../results/acc_cov/{dataset}_{method}.csv"
+        input_file = f"../results/acc_cov/{args.dataset}_{args.bbox}_{method}.csv"
         df = pd.read_csv(input_file)
         dfs.append(df)
 

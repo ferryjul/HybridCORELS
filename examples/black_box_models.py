@@ -403,10 +403,12 @@ class BlackBox:
             model=classifier_wrapper(**params)
             model.fit(X_train,y_train,sample_weight=sample_weight_train)
             return (1.0 - model.score(X_val, y_val, sample_weight=sample_weight_val)) # minimize validation error
-          
+        
         #trials = Trials()
 
-        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, return_argmin=False, timeout=self.time_limit) # trials=trials,  
+        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,
+                  rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, 
+                  return_argmin=False, timeout=self.time_limit) # trials=trials,  
 
         best = correct_names(best, to_int_params)
 
@@ -415,6 +417,8 @@ class BlackBox:
 
         self.black_box_model = classifier_wrapper(**best)
         self.black_box_model.fit(X, y, sample_weight=sample_weight)
+
+        return self
 
     def predict(self, X):
         return self.black_box_model.predict(X)
