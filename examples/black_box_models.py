@@ -257,9 +257,9 @@ def correct_names(best, to_int_params):
 
     return best
 
-''' Here is the main object '''
+# Here is the main object
 class BlackBox:
-    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100, time_limit=None):
+    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100, time_limit=None, X_val=None, y_val=None):
         '''
         bb_type: str, type of black-box model to be trained
             Supported BB types: 
@@ -281,33 +281,69 @@ class BlackBox:
         time_limit: None or int (default None)
             Maximum training time (approx. time of call to fit())
             None for no limit or int value in #seconds.        
+
+        X_val, y_val: 
+            Optional validation set (see .fit method)
         '''
         self.random_state_value = random_state_value
         self.verbosity = verbosity
         self.bb_type = bb_type
         self.n_iter = n_iter
         self.time_limit = time_limit
-        
+        if X_val is None or y_val is None:
+            self.provided_validation_data = False 
+        else:
+            self.provided_validation_data = True 
+            self.X_val = X_val
+            self.y_val = y_val 
+
     def fit(self, X, y, sample_weight=None):
+        """
+        Runs Hyperparameters optimization using the provided data.
+        
+        There are two possibilities depending on whether the user provided validation data while creating this object:
+
+        1 - No validation data provided when creating this object(X_val and y_val left to their default None value).
+        In this case, the validation set is automatically done by our method.
+        and the eventual sample_weights are applied both during training and for model evaluation (weighted accuracy)
+        CAREFUL the final model (with tuned hyperparameters) is then trained on the entire data (X,y)
+
+        2 - Validation data provided when creating this object (through X_val and y_val). 
+        In this case, the hyperparameter search optimizes the (unweighted) validation accuracy
+        and only uses the training data (X and y given to this method) only to fit the model 
+        (the validation data X_val and y_val is only used to determine the best hyperparameters)
+        """
         # print("min sw = ", np.min(sample_weight), ", max sw = ", np.max(sample_weight))
         # define a validation set using one third of the data (and keep track of indices for the sample weights)
-        indices = np.arange(y.size)
-        (
-            X_train,
-            X_val,
-            y_train,
-            y_val,
-            indices_train,
-            indices_val,
-        ) = train_test_split(X, y, indices, test_size=(1/3))
+        if not self.provided_validation_data:
+            if self.verbosity:
+                print("Performing a validation split to determine the best hyperparameters and avoid overfitting.")
+            indices = np.arange(y.size)
+            (
+                X_train,
+                X_val,
+                y_train,
+                y_val,
+                indices_train,
+                indices_val,
+            ) = train_test_split(X, y, indices, test_size=(1/3))
 
 
-        if not sample_weight is None:
-            sample_weight_train = sample_weight[indices_train]
-            sample_weight_val = sample_weight[indices_val]
+            if not sample_weight is None:
+                sample_weight_train = sample_weight[indices_train]
+                sample_weight_val = sample_weight[indices_val]
+            else:
+                sample_weight_train = None
+                sample_weight_val = None
         else:
-            sample_weight_train = None
+            if self.verbosity:
+                print("Using provided validation data.")
+            X_train = X
+            y_train = y
+            sample_weight_train = sample_weight
             sample_weight_val = None
+            X_val = self.X_val
+            y_val = self.y_val
 
         # define the BB type
         if self.bb_type == "random_forest":
