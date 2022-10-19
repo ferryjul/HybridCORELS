@@ -1,15 +1,16 @@
 import numpy as np
 import pandas as pd
-from companion_rule_list import CRL
-from HyRS import HybridRuleSetClassifier
-from sklearn.ensemble import RandomForestClassifier
 import argparse
 import os
 
 import warnings
 warnings.filterwarnings("ignore")
 
+# Local
+from companion_rule_list import CRL
+from HyRS import HybridRuleSetClassifier
 from exp_utils import get_data, to_df
+from black_box_models import BlackBox
 
 
 
@@ -69,54 +70,67 @@ def main():
     parser = argparse.ArgumentParser()
     # train data, last column is label
     parser.add_argument("--dataset", type=str, help='Dataset name. Options: adult, compas', default='compas')
-    parser.add_argument("--method", type=str, help='Method name. Options: hyrs, crl', default='hyrs')
+    parser.add_argument("--bbox", type=str, help='Black box. Options: random_forest, ada_boost, gradient_boost', default='random_forest')
     args = parser.parse_args()
 
-    X, y, features, _ = get_data(args.dataset, {"train" : 0.7,  "valid" : 0.15, "test" : 0.15})
+    # Save direcory
+    save_dir = os.path.join("results", "acc_cov")
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Get the data
+    X, y, features, _ = get_data(args.dataset, {"train" : 0.7, "valid" : 0.15, "test" : 0.15})
     df_X = to_df(X, features)
 
-    # Fit a black-box
-    bbox = RandomForestClassifier(random_state=42, min_samples_leaf=10, max_depth=10)
+    #### Black Box ####
+    print("Fitting the Black Box\n")
+    bbox = BlackBox(bb_type=args.bbox, verbosity=True, n_iter=20, X_val=df_X["valid"], y_val=y["valid"])
     bbox.fit(df_X["train"], y["train"])
     bbox_acc_v = np.mean(bbox.predict(df_X["valid"]) == y["valid"])
     bbox_acc_t = np.mean(bbox.predict(df_X["test"]) == y["test"])
-    # Evaluate the black box
+
+    #### CRL ####
+    print("Fitting CRL\n")
+    # Where to store results
     df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
                                                                  'accuracy_test', 'transparency_test'])
-
-    # Explore the space of possible hybrid models
-    if args.method == "crl":
-        # Set parameters
-        temperatures = np.linspace(0.001, 0.01, num=10)
-        alphas = np.logspace(-3, -1, 10)
-        for temperature in temperatures:
-            for alpha in alphas:
-                print(temperature, alpha)
-                df = pd.concat([df, results_crl(bbox, df_X, y, alpha, temperature)])
-    
-    elif args.method == "hyrs":
-        # Set parameters
-        hparams_hyrs = {
-            "alpha" : 0.001,
-            "beta" : 0.015
-        }
-        #temperatures = np.linspace(0.001, 0.01, num=10)
-        alphas = np.logspace(-3, -2, 10)
-        betas = np.logspace(-3, 0, 10)
-        #for temperature in temperatures:
+    # Set parameters
+    temperatures = np.linspace(0.001, 0.01, num=10)
+    alphas = np.logspace(-3, -1, 10)
+    for temperature in temperatures:
         for alpha in alphas:
-            for beta in betas:
-                for seed in range(5):
-                    print(alpha, beta, seed)
-                    hparams_hyrs['alpha'] = alpha
-                    hparams_hyrs['beta'] = beta
-                    df = pd.concat([df, results_hyrs(bbox, df_X, y, hparams_hyrs, 0.01, seed)])
-
-    #save direcory
-    save_dir = os.path.join("results", "acc_cov")
-    os.makedirs(save_dir, exist_ok=True)
-    filename = os.path.join(save_dir, f"{args.dataset}_{args.method}.csv")
+            print(temperature, alpha)
+            df = pd.concat([df, results_crl(bbox, df_X, y, alpha, temperature)])
+    
+    filename = os.path.join(save_dir, f"{args.dataset}_{args.bbox}_crl.csv")
     df.to_csv(filename, encoding='utf-8', index=False)
+
+
+    #### HyRS ####
+    print("Fitting HyRS\n")
+    # Where to store results
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
+                                                                 'accuracy_test', 'transparency_test'])
+    # Set parameters
+    hparams_hyrs = {
+        "alpha" : 0.001,
+        "beta" : 0.015
+    }
+    #temperatures = np.linspace(0.001, 0.01, num=10)
+    alphas = np.logspace(-3, -2, 10)
+    betas = np.logspace(-3, 0, 10)
+    #for temperature in temperatures:
+    for alpha in alphas:
+        for beta in betas:
+            for seed in range(5):
+                print(alpha, beta, seed)
+                hparams_hyrs['alpha'] = alpha
+                hparams_hyrs['beta'] = beta
+                df = pd.concat([df, results_hyrs(bbox, df_X, y, hparams_hyrs, 0.01, seed)])
+
+    filename = os.path.join(save_dir, f"{args.dataset}_{args.bbox}_hyrs.csv")
+    df.to_csv(filename, encoding='utf-8', index=False)
+
+
 
 
 
