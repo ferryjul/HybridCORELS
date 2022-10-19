@@ -162,7 +162,7 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
   int *rule_ids = NULL, *rule_names_mine_lengths = NULL;
   rule_t *rules_vec = NULL, *rules_vec_mine = NULL;
   
-  nrules = nfeatures * 2;
+  nrules = nfeatures; // * 2; // modified by Julien to eliminate negations
   rule_alloc = nrules + 1;
   rules_vec = (rule_t*)malloc(sizeof(rule_t) * rule_alloc);
   if(!rules_vec) {
@@ -196,11 +196,11 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
     {
       if(rule_isset(samples[j].truthtable, nfeatures - i - 1, nfeatures)) {
         rule_set(rules_vec[i + 1].truthtable, nsamples - j - 1, 1, nsamples);
-        rule_set(rules_vec[nrules / 2 + i + 1].truthtable, nsamples - j - 1, 0, nsamples);
+        //rule_set(rules_vec[nrules / 2 + i + 1].truthtable, nsamples - j - 1, 0, nsamples); // modified by Julien to eliminate negations
       }
       else {
         rule_set(rules_vec[i + 1].truthtable, nsamples - j - 1, 0, nsamples);
-        rule_set(rules_vec[nrules / 2 + i + 1].truthtable, nsamples - j - 1, 1, nsamples);
+        //rule_set(rules_vec[nrules / 2 + i + 1].truthtable, nsamples - j - 1, 1, nsamples); // modified by Julien to eliminate negations
       }
     }
   }
@@ -212,7 +212,7 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
     // If the rule satisfies the threshold requirements, add it to the out file.
     // If it exceeds the maximum threshold, it is still kept for later rule mining
     // If it less than the minimum threshold, don't add it
-    if((double)ones / (double)nsamples < min_support) {
+    if(((double)ones / (double)nsamples < min_support)) {
       rule_vfree(&rules_vec[i + 1].truthtable);
       continue;
     }
@@ -223,20 +223,20 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
     }
     rule_copy(rules_vec_mine[nrules_mine].truthtable, rules_vec[i + 1].truthtable, nsamples);
     
-    if(i < (nrules / 2)) {
+    //if(i < (nrules / 2)) { // modified by Julien to eliminate negations
       rules_vec_mine[nrules_mine].features = strdup(features[i]);
       rules_vec_mine[nrules_mine].cardinality = i + 1;
-    }
-    else {
+   // }
+   /* else { // modified by Julien to eliminate negations
       rules_vec_mine[nrules_mine].features = (char*)malloc(strlen(features[i - (nrules / 2)]) + 5);
       strcpy(rules_vec_mine[nrules_mine].features, features[i - (nrules / 2)]);
       strcat(rules_vec_mine[nrules_mine].features, "-not");
       rules_vec_mine[nrules_mine].cardinality = -(i - (nrules / 2)) - 1;
-    }
+    }*/
 
     rule_names_mine_lengths[nrules_mine] = strlen(rules_vec_mine[nrules_mine].features);
     
-    if(((double)ones / (double)nsamples <= 1.0 - min_support) && (i < (nrules / 2))) { // added by Julien to eliminate negations
+    if(((double)ones / (double)nsamples <= 1.0 - min_support)) { 
       memcpy(&rules_vec[ntotal_rules + 1], &rules_vec[i + 1], sizeof(rule_t));
       rules_vec[ntotal_rules + 1].cardinality = 1;
       rules_vec[ntotal_rules + 1].support = ones;
@@ -245,13 +245,13 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
       rules_vec[ntotal_rules + 1].cardinality = 1;
       rules_vec[ntotal_rules + 1].support = ones;
 
-      if(i < (nrules / 2))
+      // if(i < (nrules / 2)) // modified by Julien to eliminate negations
         rules_vec[ntotal_rules + 1].features = strdup(features[i]);
-      else {
+      /*else {
         rules_vec[ntotal_rules + 1].features = (char*)malloc(strlen(features[i - (nrules / 2)]) + 5);
         strcpy(rules_vec[ntotal_rules + 1].features, features[i - (nrules / 2)]);
         strcat(rules_vec[ntotal_rules + 1].features, "-not");
-      }
+      }*/
    
       ntotal_rules++;
       
