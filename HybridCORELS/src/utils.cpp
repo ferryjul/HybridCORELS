@@ -236,7 +236,7 @@ int mine_rules(char **features, rule_t *samples, int nfeatures, int nsamples,
 
     rule_names_mine_lengths[nrules_mine] = strlen(rules_vec_mine[nrules_mine].features);
     
-    if((double)ones / (double)nsamples <= 1.0 - min_support) {
+    if(((double)ones / (double)nsamples <= 1.0 - min_support) && (i < (nrules / 2))) { // added by Julien to eliminate negations
       memcpy(&rules_vec[ntotal_rules + 1], &rules_vec[i + 1], sizeof(rule_t));
       rules_vec[ntotal_rules + 1].cardinality = 1;
       rules_vec[ntotal_rules + 1].support = ones;
