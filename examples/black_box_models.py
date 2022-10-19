@@ -412,6 +412,8 @@ class BlackBox:
                   return_argmin=False, timeout=self.time_limit) # trials=trials,  
 
         best = correct_names(best, to_int_params)
+        
+        best["random_state"] = self.random_state_value
 
         if self.verbosity:
             print("Best Hyperparameters: ", best)
