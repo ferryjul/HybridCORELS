@@ -395,12 +395,13 @@ class BlackBox:
             to_int_params = ['min_samples_leaf', 'n_estimators']
         
         # find best params
-        def objective(params):
+        def objective(local_params):
+            local_params["random_state"] = self.random_state_value
             for p in to_int_params:
-                if not params[p] is None:
-                    params[p] = int(params[p])
-            #print(params)
-            model=classifier_wrapper(**params)
+                if not local_params[p] is None:
+                    local_params[p] = int(local_params[p])
+            #print(local_params)
+            model=classifier_wrapper(**local_params)
             model.fit(X_train,y_train,sample_weight=sample_weight_train)
             return (1.0 - model.score(X_val, y_val, sample_weight=sample_weight_val)) # minimize validation error
           
