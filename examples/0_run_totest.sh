@@ -7,4 +7,4 @@
 #SBATCH -e slurm_out/slurmout_%A.errarray
 #SBATCH --array=0,1,2
 
-python3.10 example_HybridCORELS.py --dataset=${SLURM_ARRAY_TASK_ID} > ./results/pre_tests
+python3.10 example_HybridCORELS.py --dataset=${SLURM_ARRAY_TASK_ID} > ./results/pre_tests/example_test_dataset${SLURM_ARRAY_TASK_ID}.txt
