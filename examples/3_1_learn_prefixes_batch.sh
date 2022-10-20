@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -n 450
-#SBATCH --mem-per-cpu=6500
+#SBATCH --mem-per-cpu=9000
 #SBATCH --time=02:00:00
 #SBATCH --job-name=expes_hycopre
 #SBATCH -o slurm_out/slurmout_%A.out
