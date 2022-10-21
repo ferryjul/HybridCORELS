@@ -33,7 +33,7 @@ datasets = ["compas", "adult", "acs_employ"]
 dataset_name = datasets[args.dataset]
 
 policies = ['objective', 'lower_bound', 'bfs']
-cList = [0.00001] #[0.001, 0.0001] #, 0.00001]
+cList = [0.001, 0.0001, 0.00001]
 min_coverageList = [0.25, 0.50, 0.75, 0.85, 0.95] #np.concatenate([np.arange(0, 1.0, 0.05), np.arange(0.96, 0.99, 0.01)])
 alphaList = np.arange(0, 11, 1) # 11 values
 bbtypes = [RandomForestClassifier]#, AdaBoostClassifier, GradientBoostingClassifier]
@@ -53,6 +53,7 @@ for p in policies:
 if not ccanada_expes:
     print("# combinations of params: ", len(paramsList))
 
+# 675 unique combinations of hyperparameters
 worker_params = paramsList[rank]
 policy = worker_params[0]
 cValue = worker_params[1]
@@ -126,7 +127,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_HybridCORELSPre_%s_additional_lambda.csv' %(dataset_name) #_proportions
+    fileName = './results/results_HybridCORELSPre_%s.csv' %(dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)

@@ -9,9 +9,9 @@ cList = [0.001, 0.0001, 0.00001]
 min_coverageList = [0.25, 0.50, 0.75, 0.85, 0.95] #np.concatenate([np.arange(0, 1.0, 0.05), np.arange(0.96, 0.99, 0.01)])
 alphaList = np.arange(0, 11, 1) # 11 values
 dataset_seeds = [0,1,2,3,4]
-min_support_list = [0.05, 0.1]
+min_support_list = [0.01, 0.05, 0.1]
 paramsList = []
-datasets = ["compas", "adult"]
+datasets = ["compas", "adult", "acs_employ"]
 n_iter_param = 10**9
 
 for dataset_name in datasets:
