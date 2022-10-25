@@ -76,13 +76,13 @@ for dataset_name in datasets:
 
     fig,ax = plt.subplots()
     ax.plot(min_coverageList, accs_list_list, marker='x', label="train accuracy (prefix)")
-    ax.set_ylabel("Prefix accuracy")
-    plt.xlabel("Min Coverage")
+    ax.set_ylabel("Prefix Accuracy")
+    plt.xlabel("Min. Transparency Constraint")
 
     ax2=ax.twinx()
 
     ax2.plot(min_coverageList, actual_coverageList, marker = 'o', c='orange', label="actual prefix coverage")
-    ax2.set_ylabel("Prefix Coverage")
+    ax2.set_ylabel("Actual Prefix Coverage")
 
     #plt.legend(loc='best')
     plt.savefig("./figures/best_prefixes_dataset_%s.png" %dataset_name, bbox_inches='tight')
