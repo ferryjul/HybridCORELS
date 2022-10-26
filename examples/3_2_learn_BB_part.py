@@ -24,10 +24,10 @@ else: # for local debug, fixed parameters
     models_folder = "models_graham"
     verbosity = True
 
-parser = argparse.ArgumentParser(description='Instability of HyRS')
+parser = argparse.ArgumentParser(description='Learn BB part of prelearnt prefixes')
 parser.add_argument('--dataset', type=int, default=0, help='1 for adult, 0 for compas')
 args = parser.parse_args()
-datasets = ["compas", "adult"]
+datasets = ["compas", "adult", "acs_employ"]
 dataset_name = datasets[args.dataset]
 
 min_coverageList = [0.25, 0.50, 0.75, 0.85, 0.95] # 5 values

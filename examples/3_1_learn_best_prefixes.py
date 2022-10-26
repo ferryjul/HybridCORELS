@@ -6,7 +6,8 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 interpr_tout = 3600 #3600 #3600 # seconds
-interpr_mem = 5000 # MB
+interpr_mem = 8000 # MB
+n_iter_param = 10**9
 
 if ccanada_expes: # one core performs operations for all values of alpha for all black-boxes
     from mpi4py import MPI
@@ -28,7 +29,7 @@ else: # for local debug, fixed parameters
 parser = argparse.ArgumentParser(description='Instability of HyRS')
 parser.add_argument('--dataset', type=int, default=0, help='1 for adult, 0 for compas')
 args = parser.parse_args()
-datasets = ["compas", "adult"]
+datasets = ["compas", "adult", "acs_employ"]
 dataset_name = datasets[args.dataset]
 
 policies = ['objective', 'lower_bound', 'bfs']
@@ -37,7 +38,7 @@ min_coverageList = [0.25, 0.50, 0.75, 0.85, 0.95] #np.concatenate([np.arange(0, 
 alphaList = np.arange(0, 11, 1) # 11 values
 bbtypes = [RandomForestClassifier]#, AdaBoostClassifier, GradientBoostingClassifier]
 dataset_seeds = [0,1,2,3,4]
-min_support_list = [0.05, 0.1]
+min_support_list = [0.01, 0.05, 0.1]
 paramsList = []
 
 for p in policies:
@@ -52,6 +53,7 @@ for p in policies:
 if not ccanada_expes:
     print("# combinations of params: ", len(paramsList))
 
+# 675 unique combinations of hyperparameters
 worker_params = paramsList[rank]
 policy = worker_params[0]
 cValue = worker_params[1]
@@ -66,7 +68,6 @@ if not ccanada_expes:
 
 X_train, X_test, y_train, y_test = X['train'], X['test'], y['train'], y['test']
 
-n_iter_param = 10**9
 corels_params = {'policy':policy, 'max_card':1, 'c':cValue, 'n_iter':n_iter_param, 'min_support':min_support_param, 'verbosity':verbositylist} #"progress"
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
@@ -118,7 +119,7 @@ interpr_accuracy_test = np.mean(preds_test[interpr_indices_test] == y_test[inter
 status = hyb_model.get_status()
 sparsity = hyb_model.get_sparsity()
 print("Expe: dataset = %s, " %dataset_name, "min_cov=%s" %min_coverage, "policy=%s" %policy, "c=%.3f" %cValue, "bb=%s"%black_box, "alpha=%.3f" %alpha_value, " done.")
-res.append([random_state_value, black_box, min_coverage, beta_value, alpha_value, policy, cValue, status, train_acc, test_acc, interpr_accuracy_train, interpr_accuracy_test, black_box_accuracy_train, black_box_acc_upper_bound, black_box_accuracy_test, transparency_train, transparency_test, str(hyb_model), sparsity])
+res.append([random_state_value, black_box, min_coverage, beta_value, alpha_value, policy, min_support_param, cValue, status, train_acc, test_acc, interpr_accuracy_train, interpr_accuracy_test, black_box_accuracy_train, black_box_acc_upper_bound, black_box_accuracy_test, transparency_train, transparency_test, str(hyb_model), sparsity])
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -130,7 +131,7 @@ if rank == 0 or not ccanada_expes:
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Seed', 'Black Box', 'Min coverage', 'Beta', 'Alpha', 'Policy', 'Lambda', 'Search status', 'Training accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Training accuracy (BB) UB', 'Test accuracy (BB)', 'Training transparency', 'Test transparency', 'Model', 'Prefix length'])
+        csv_writer.writerow(['Seed', 'Black Box', 'Min coverage', 'Beta', 'Alpha', 'Policy', 'Min support', 'Lambda', 'Search status', 'Training accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Training accuracy (BB) UB', 'Test accuracy (BB)', 'Training transparency', 'Test transparency', 'Model', 'Prefix length'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):
