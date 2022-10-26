@@ -42,7 +42,7 @@ def get_pareto_fronts(dfs):
 
 
 
-def compute_fronts(dfs, methods):#, output_file):
+def compute_fronts(dfs, methods, args):#, output_file):
 
     dfs_valid_opt, dfs_test_opt = get_pareto_fronts(dfs)
     
@@ -53,6 +53,7 @@ def compute_fronts(dfs, methods):#, output_file):
     plt.xlabel('Coverage')
     plt.ylabel('Accuracy')
     plt.legend()
+    plt.savefig(f"./images/acc_cov_valid_{args.dataset}_{args.bbox}.pdf", bbox_inches='tight')
     # plt.ylim(0.6, 0.7)
 
     plt.figure()
@@ -60,6 +61,7 @@ def compute_fronts(dfs, methods):#, output_file):
         plt.plot(dfs_test_opt[i]['transparency_test'], dfs_test_opt[i]['accuracy_test'], "o-", label=method)
     plt.xlabel('Coverage')
     plt.ylabel('Accuracy')
+    plt.savefig(f"./images/acc_cov_test_{args.dataset}_{args.bbox}.pdf", bbox_inches='tight')
     # plt.ylim(0.6, 0.7)
 
 
@@ -89,7 +91,7 @@ def main():
         df = pd.read_csv(input_file)
         dfs.append(df)
 
-    compute_fronts(dfs, methods)
+    compute_fronts(dfs, methods, args)
 
 
 

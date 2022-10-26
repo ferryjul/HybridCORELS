@@ -290,6 +290,7 @@ class BlackBox:
         self.bb_type = bb_type
         self.n_iter = n_iter
         self.time_limit = time_limit
+        self.is_fitted = False
         if X_val is None or y_val is None:
             self.provided_validation_data = False 
         else:
@@ -420,7 +421,8 @@ class BlackBox:
 
         self.black_box_model = classifier_wrapper(**best)
         self.black_box_model.fit(X, y, sample_weight=sample_weight)
-
+        self.is_fitted = True
+        
         return self
 
     def predict(self, X):
@@ -431,3 +433,7 @@ class BlackBox:
 
     def __str__(self):
         return str(self.black_box_model)
+
+
+    def __sklearn_is_fitted__(self):
+        return self.is_fitted
