@@ -437,3 +437,46 @@ class BlackBox:
 
     def __sklearn_is_fitted__(self):
         return self.is_fitted
+
+
+    def save(self, fname):
+        """
+        Save the black box to a file, using python's pickle module.
+
+        Parameters
+        ----------
+        fname : string
+            File name to store the model in
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+
+        with open(fname, "wb") as f:
+            pickle.dump(self, f)
+
+        return self
+
+    
+    def load(self, fname):
+        """
+        Load a black box from a file, using python's pickle module.
+        
+        Parameters
+        ----------
+        fname : string
+            File name to load the rulelist from
+        
+        Returns
+        -------
+        self : obj
+        """
+        import pickle
+        with open(fname, "rb") as f:
+            loaded_object = pickle.load(f)
+        if type(loaded_object) != BlackBox:
+            raise TypeError("Loaded object of type %s from file %s, expected <class 'black_box_models.BlackBox'>" %(type(loaded_object), fname))
+        else:
+            return loaded_object

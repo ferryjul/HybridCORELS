@@ -109,12 +109,19 @@ def main():
     df_X = to_df(X, features)
 
     #### Black Box ####
-    print("Fitting the Black Box\n")
-    bbox = BlackBox(bb_type=args.bbox, verbosity=True, n_iter=2, X_val=df_X["valid"], y_val=y["valid"])
-    bbox.fit(df_X["train"], y["train"])
+    if not os.path.exists(f"models/{args.dataset}_{args.bbox}.pickle"):
+        print("Fitting the Black Box\n")
+        bbox = BlackBox(bb_type=args.bbox, verbosity=True, n_iter=20, X_val=df_X["valid"], y_val=y["valid"])
+        bbox.fit(df_X["train"], y["train"])
+        bbox.save(f"models/{args.dataset}_{args.bbox}.pickle")
+    else:
+        print("Loading the Black Box\n")
+        bbox = BlackBox(bb_type=args.bbox).load(f"models/{args.dataset}_{args.bbox}.pickle")
+    # Black box performances
     bbox_acc_v = np.mean(bbox.predict(df_X["valid"]) == y["valid"])
+    print(bbox_acc_v)
     bbox_acc_t = np.mean(bbox.predict(df_X["test"]) == y["test"])
-
+    print(bbox_acc_t)
 
     #### HybridCORELSPostClassifier ####
     print("Fitting HybridCORELSPostClassifier\n")
