@@ -11,7 +11,34 @@ from companion_rule_list import CRL
 from HyRS import HybridRuleSetClassifier
 from exp_utils import get_data, to_df
 from black_box_models import BlackBox
+from HybridCORELS import HybridCORELSPostClassifier
 
+
+
+# Process results of HybridCORELSPostClassifier
+def results_hybrid_post(bbox, df_X, y, min_coverage, **corels_params):
+    hyb_model = HybridCORELSPostClassifier(black_box_classifier=bbox, beta=0.0, min_coverage=min_coverage, 
+                                       bb_pretrained=True, **corels_params)
+    # Train the hybrid model
+    hyb_model.fit(df_X["train"].to_numpy(), y["train"], time_limit=120)
+    print(hyb_model.get_status())
+
+    # Valid performance
+    yhat, covered_index = hyb_model.predict_with_type(df_X["valid"].to_numpy())
+    overall_acc_v = np.mean(yhat == y["valid"])
+    rule_coverage_v = np.sum(covered_index) / len(covered_index)
+
+    # Test performance
+    yhat, covered_index = hyb_model.predict_with_type(df_X["test"].to_numpy())
+    overall_acc_t =  np.mean(yhat == y["test"])
+    rule_coverage_t = np.sum(covered_index) / len(covered_index)
+
+    # Store in dataframe
+    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t]], 
+                            columns=['accuracy_valid', 'transparency_valid',
+                                     'accuracy_test', 'transparency_test'])
+
+    return df_res
 
 
 
@@ -39,7 +66,7 @@ def results_crl(bbox, df_X, y, alpha, init_temperature):
 
 
 
-# Process results of CRL
+# Process results of HyRS
 def results_hyrs(bbox, df_X, y, hparams_hyrs, init_temperature, seed):
     # Define a hybrid model
     hyb_model = HybridRuleSetClassifier(bbox, **hparams_hyrs)
@@ -82,11 +109,51 @@ def main():
     df_X = to_df(X, features)
 
     #### Black Box ####
-    print("Fitting the Black Box\n")
-    bbox = BlackBox(bb_type=args.bbox, verbosity=True, n_iter=20, X_val=df_X["valid"], y_val=y["valid"])
-    bbox.fit(df_X["train"], y["train"])
+    if not os.path.exists(f"models/{args.dataset}_{args.bbox}.pickle"):
+        print("Fitting the Black Box\n")
+        bbox = BlackBox(bb_type=args.bbox, verbosity=True, n_iter=20, X_val=df_X["valid"], y_val=y["valid"])
+        bbox.fit(df_X["train"], y["train"])
+        bbox.save(f"models/{args.dataset}_{args.bbox}.pickle")
+    else:
+        print("Loading the Black Box\n")
+        bbox = BlackBox(bb_type=args.bbox).load(f"models/{args.dataset}_{args.bbox}.pickle")
+    # Black box performances
     bbox_acc_v = np.mean(bbox.predict(df_X["valid"]) == y["valid"])
+    print(bbox_acc_v)
     bbox_acc_t = np.mean(bbox.predict(df_X["test"]) == y["test"])
+    print(bbox_acc_t)
+
+    #### HybridCORELSPostClassifier ####
+    print("Fitting HybridCORELSPostClassifier\n")
+    # Where to store results
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
+                                                                 'accuracy_test', 'transparency_test'])
+    # Set parameters
+    corels_params = {
+        'max_card' : 1,
+        'min_support' : 0.01,
+        'n_iter' : 10**7,
+        'verbosity': []
+    }
+
+    cs = [1e-2, 1e-3, 1e-4]
+    policies = ['objective', 'lower_bound', 'bfs']
+    min_coverages = [0.25, 0.50, 0.75, 0.85, 0.95]
+    min_supports = [0.01, 0.05]
+    for policy in policies:
+        for c in cs:
+            for min_coverage in min_coverages:
+                for min_support in min_supports:
+                    print(policy, c, min_coverage, min_support)
+                    corels_params["c"] = c
+                    corels_params["policy"] = policy
+                    corels_params["min_support"] = min_support
+                    df = pd.concat([df, results_hybrid_post(bbox, df_X, y, min_coverage, **corels_params)])
+    
+    filename = os.path.join(save_dir, f"{args.dataset}_{args.bbox}_hybrid_post.csv")
+    df.to_csv(filename, encoding='utf-8', index=False)
+
+
 
     #### CRL ####
     print("Fitting CRL\n")
@@ -103,6 +170,7 @@ def main():
     
     filename = os.path.join(save_dir, f"{args.dataset}_{args.bbox}_crl.csv")
     df.to_csv(filename, encoding='utf-8', index=False)
+
 
 
     #### HyRS ####
