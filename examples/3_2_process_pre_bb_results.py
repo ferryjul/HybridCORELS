@@ -12,7 +12,7 @@ accuracy_train_color = 'navy'
 accuracy_test_color = 'darkgreen'
 save_dir = "./results_graham"
 datasets = ["adult", "compas", "acs_employ"]
-show_lb_ub = True
+show_lb_ub = True # Important param!
 show_std = True
 bbdict = {'random_forest':'Random Forest', 'ada_boost':'AdaBoost', 'gradient_boost':'Gradient Boost'}
 min_support_txt_dict = {0.25:'Low Transparency (0.25)', 0.50:'Medium Transparency (0.50)', 0.75:'High Transparency (0.75)', 0.85:'High Transparency (0.85)', 0.95:'Very High Transparency (0.95)'}
@@ -23,20 +23,23 @@ legend_elements = []
 legend_elements.append(Line2D([0], [0], marker='x', color=accuracy_train_color, lw=1, label="Black-box Accuracy (train)")) # linestyle = 'None',
 legend_elements.append(Line2D([0], [0], marker='x', color=accuracy_test_color, lw=1, label="Black-box Accuracy (test)")) # linestyle = 'None',
 legend_elements.append(Line2D([0], [0], marker='x', c='r', lw=1, label='Best (test)'))
+
+if show_lb_ub:
+    legend_elements.append(Line2D([0], [0], color=accuracy_train_color, lw=1, label="Black-box Accuracy (train) - UB", linestyle='--')) # linestyle = 'None',
+    legend_elements.append(Line2D([0], [0], color=accuracy_test_color, lw=1, label="Black-box Accuracy (test) - LB", linestyle='--')) # linestyle = 'None',
+    suffix_lb_ub_str = "_w_lb_ub"
+else:
+    suffix_lb_ub_str = ""
+
 legendFig.legend(handles=legend_elements, loc='center', ncol=3)
 legendFig.savefig('./figures/black_boxes_legend.pdf', bbox_inches='tight')
 plt.clf()
 best_gap = -1
 best_alphas_list = {}
 for dataset in datasets:
-    dataset_dict = {}
-    for a_seed in range(5):
-        X, y, features, prediction = get_data(dataset_name, {"train" : 0.8, "test" : 0.2}, random_state_param=a_seed)
-        dataset_dict[a_seed]['X'] = X
-        dataset_dict[a_seed]['y'] = y
 
     best_alphas_list[dataset] = {}
-    fileName = '%s/results_HybridCORELSPre_wBB_%s.csv' %(save_dir, dataset)
+    fileName = '%s/results_HybridCORELSPre_wBB_%s_with_ub_lb.csv' %(save_dir, dataset)
     n_folds = 5
     #colors = {'random_forest':'orange', 'ada_boost':'blue', 'gradient_boost':'green'}
     # header = ["fold_id", "min_coverage", "alpha_value", "train_acc", "train_coverage", "test_acc", "test_coverage", "search_status", "sparsity", "model"]
@@ -49,7 +52,11 @@ for dataset in datasets:
 
             train_acc = row["Training accuracy (BB)"]
             train_acc_ub = row["Training accuracy (BB) UB"]
+            train_acc_lb = row["Training accuracy (BB) LB"] #float(model_txt[-1])
+
             test_acc = row["Test accuracy (BB)"]
+            test_acc_ub = row["Test accuracy (BB) UB"]
+            test_acc_lb = row["Test accuracy (BB) LB"]
 
             model_txt = row["Model"].replace(')','').split()
             assert(model_txt[-2] == 'pred')
@@ -57,19 +64,6 @@ for dataset in datasets:
             min_coverage = row["Min coverage"]
             seed = row["Seed"]
             bb_type = row["Black Box"]
-
-            # UB and LB BB acc computation -----
-            '''dataset_dict[seed]['X']['train']
-            dataset_dict[seed]['X']['test']
-            dataset_dict[seed]['y']['train']
-            dataset_dict[seed]['y']['test']
-
-            black_box_acc_upper_bound = computeAccuracyUpperBound(X_train[bb_indices_train], y_train[bb_indices_train])
-            train_acc_lb = float(model_txt[-1])
-            test_acc_lb = -1 # TODO compute it'''
-
-            # -----------------------------------
-
 
             if row["Search status"] != "opt":
                 all_opt = False
@@ -110,7 +104,7 @@ for dataset in datasets:
                 plot_dicts[bbtype][min_coverage]["alpha_val_list"].append(alpha_val)
                 assert(len(results_dict[bbtype][min_coverage][alpha_val]["train_acc_bb"]) ==  n_folds)
                 assert(len(results_dict[bbtype][min_coverage][alpha_val]["train_acc_ub"]) ==  n_folds)
-                assert(len(results_dict[bbtype][min_coverage][alpha_val]["train_acc_lb"]) ==  n_folds)
+                assert(len(results_dict[bbtype][min_coverage][alpha_val]["test_acc_lb"]) ==  n_folds)
                 assert(len(results_dict[bbtype][min_coverage][alpha_val]["test_acc_bb"]) ==  n_folds)
 
                 # push average on the n folds
@@ -178,9 +172,9 @@ for dataset in datasets:
             plt.xlabel("Specialization Coefficient $\\alpha$")
             plt.ylabel("Black-Box Accuracy")
             #plt.legend(loc='best')
-            saveName = "figures/expes_pre_min_coverage_%.2f_%s_%s.png" %(min_coverage, dataset, bbtype)
+            saveName = "figures/expes_pre_min_coverage_%.2f_%s_%s%s.png" %(min_coverage, dataset, bbtype, suffix_lb_ub_str)
             plt.savefig(saveName, bbox_inches='tight')
-            saveName = "figures/expes_pre_min_coverage_%.2f_%s_%s.pdf" %(min_coverage, dataset, bbtype)
+            saveName = "figures/expes_pre_min_coverage_%.2f_%s_%s%s.pdf" %(min_coverage, dataset, bbtype, suffix_lb_ub_str)
             plt.savefig(saveName, bbox_inches='tight')
             plt.clf()
             #if min_coverage in [0.25, 0.50, 0.75, 0.85, 0.95]:
@@ -208,6 +202,7 @@ for dataset in datasets:
     else:
         print("Dataset %s: Some experiments did not reach optimality." %dataset)
 
+'''
 print("best_alphas_list = ", best_alphas_list)
 best_alphas_average = {}
 
@@ -271,3 +266,4 @@ plt.clf()
 
 # best gap for rf bb
 print(best_gap, best_exp, "%.4f -> %.4f" %(old_perf, new_perf))
+'''
