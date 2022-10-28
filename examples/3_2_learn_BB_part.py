@@ -104,9 +104,6 @@ for black_box in bbtypes:
     black_box_accuracy_train_lb = max(y_bb_train_counts)/sum(y_bb_train_counts)
     assert(black_box_accuracy_train_lb == hyb_model.black_box_majority) # just a double check
 
-    status = hyb_model.get_status()
-    sparsity = hyb_model.get_sparsity()
-
     ##
     black_box_acc_upper_bound = computeAccuracyUpperBound(X_train[bb_indices_train], y_train[bb_indices_train])
     if verbosity:
