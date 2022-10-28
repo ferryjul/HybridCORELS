@@ -100,6 +100,13 @@ for black_box in bbtypes:
     black_box_accuracy_train = np.mean(preds_train[bb_indices_train] == y_train[bb_indices_train])
     interpr_accuracy_train = np.mean(preds_train[interpr_indices_train] == y_train[interpr_indices_train])
 
+    y_bb_train_counts = np.unique(y_train[bb_indices_train], return_counts=True)[1]
+    black_box_accuracy_train_lb = max(y_bb_train_counts)/sum(y_bb_train_counts)
+    assert(black_box_accuracy_train_lb == hyb_model.black_box_majority) # just a double check
+
+    status = hyb_model.get_status()
+    sparsity = hyb_model.get_sparsity()
+
     ##
     black_box_acc_upper_bound = computeAccuracyUpperBound(X_train[bb_indices_train], y_train[bb_indices_train])
     if verbosity:
@@ -116,10 +123,15 @@ for black_box in bbtypes:
     black_box_accuracy_test= np.mean(preds_test[bb_indices_test] == y_test[bb_indices_test])
     interpr_accuracy_test = np.mean(preds_test[interpr_indices_test] == y_test[interpr_indices_test])
 
+    y_bb_test_counts = np.unique(y_test[bb_indices_test], return_counts=True)[1]
+    black_box_accuracy_test_lb = max(y_bb_test_counts)/sum(y_bb_test_counts)
     status = hyb_model.get_status()
     sparsity = hyb_model.get_sparsity()
+
+    black_box_acc_upper_bound_test = computeAccuracyUpperBound(X_test[bb_indices_test], y_test[bb_indices_test])
+
     print("Expe: dataset = %s, " %dataset_name, "min_cov=%s" %min_coverage, "policy=%s" %policy, "c=%.3f" %cValue, "bb=%s"%black_box, "alpha=%.3f" %alpha_value, " done.")
-    res.append([random_state_value, black_box, min_coverage, beta_value, alpha_value, policy, min_support_param, cValue, status, train_acc, test_acc, interpr_accuracy_train, interpr_accuracy_test, black_box_accuracy_train, black_box_acc_upper_bound, black_box_accuracy_test, transparency_train, transparency_test, str(hyb_model), sparsity])
+    res.append([random_state_value, black_box, min_coverage, beta_value, alpha_value, policy, min_support_param, cValue, status, train_acc, test_acc, interpr_accuracy_train, interpr_accuracy_test, black_box_accuracy_train, black_box_acc_upper_bound, black_box_accuracy_train_lb, black_box_accuracy_test, black_box_acc_upper_bound_test, black_box_accuracy_test_lb, transparency_train, transparency_test, str(hyb_model), sparsity])
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -127,11 +139,11 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_HybridCORELSPre_wBB_%s.csv' %(dataset_name) #_proportions
+    fileName = './results/results_HybridCORELSPre_wBB_%s_with_ub_lb.csv' %(dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Seed', 'Black Box', 'Min coverage', 'Beta', 'Alpha', 'Policy', 'Min support', 'Lambda', 'Search status', 'Training accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Training accuracy (BB) UB', 'Test accuracy (BB)', 'Training transparency', 'Test transparency', 'Model', 'Prefix length'])
+        csv_writer.writerow(['Seed', 'Black Box', 'Min coverage', 'Beta', 'Alpha', 'Policy', 'Min support', 'Lambda', 'Search status', 'Training accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Training accuracy (BB) UB',  'Training accuracy (BB) LB', 'Test accuracy (BB)', 'Test accuracy (BB) UB', 'Test accuracy (BB) LB', 'Training transparency', 'Test transparency', 'Model', 'Prefix length'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):

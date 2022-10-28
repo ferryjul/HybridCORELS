@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FormatStrFormatter
+from exp_utils import get_data, computeAccuracyUpperBound
 
 matplotlib.rcParams.update({'font.size': 12.0}) # default = 10.0
 
@@ -11,7 +12,7 @@ accuracy_train_color = 'navy'
 accuracy_test_color = 'darkgreen'
 save_dir = "./results_graham"
 datasets = ["adult", "compas", "acs_employ"]
-show_lb_ub = False
+show_lb_ub = True
 show_std = True
 bbdict = {'random_forest':'Random Forest', 'ada_boost':'AdaBoost', 'gradient_boost':'Gradient Boost'}
 min_support_txt_dict = {0.25:'Low Transparency (0.25)', 0.50:'Medium Transparency (0.50)', 0.75:'High Transparency (0.75)', 0.85:'High Transparency (0.85)', 0.95:'Very High Transparency (0.95)'}
@@ -28,6 +29,12 @@ plt.clf()
 best_gap = -1
 best_alphas_list = {}
 for dataset in datasets:
+    dataset_dict = {}
+    for a_seed in range(5):
+        X, y, features, prediction = get_data(dataset_name, {"train" : 0.8, "test" : 0.2}, random_state_param=a_seed)
+        dataset_dict[a_seed]['X'] = X
+        dataset_dict[a_seed]['y'] = y
+
     best_alphas_list[dataset] = {}
     fileName = '%s/results_HybridCORELSPre_wBB_%s.csv' %(save_dir, dataset)
     n_folds = 5
@@ -46,11 +53,23 @@ for dataset in datasets:
 
             model_txt = row["Model"].replace(')','').split()
             assert(model_txt[-2] == 'pred')
-            train_acc_lb = float(model_txt[-1])
 
             min_coverage = row["Min coverage"]
             seed = row["Seed"]
             bb_type = row["Black Box"]
+
+            # UB and LB BB acc computation -----
+            '''dataset_dict[seed]['X']['train']
+            dataset_dict[seed]['X']['test']
+            dataset_dict[seed]['y']['train']
+            dataset_dict[seed]['y']['test']
+
+            black_box_acc_upper_bound = computeAccuracyUpperBound(X_train[bb_indices_train], y_train[bb_indices_train])
+            train_acc_lb = float(model_txt[-1])
+            test_acc_lb = -1 # TODO compute it'''
+
+            # -----------------------------------
+
 
             if row["Search status"] != "opt":
                 all_opt = False
@@ -65,12 +84,12 @@ for dataset in datasets:
                 results_dict[bb_type][min_coverage][alpha_val] = {}
                 results_dict[bb_type][min_coverage][alpha_val]["train_acc_bb"] = [train_acc]
                 results_dict[bb_type][min_coverage][alpha_val]["train_acc_ub"] = [train_acc_ub]
-                results_dict[bb_type][min_coverage][alpha_val]["train_acc_lb"] = [train_acc_lb]
+                results_dict[bb_type][min_coverage][alpha_val]["test_acc_lb"] = [test_acc_lb]
                 results_dict[bb_type][min_coverage][alpha_val]["test_acc_bb"] = [test_acc]
             else:
                 results_dict[bb_type][min_coverage][alpha_val]["train_acc_bb"].append(train_acc)
                 results_dict[bb_type][min_coverage][alpha_val]["train_acc_ub"].append(train_acc_ub)
-                results_dict[bb_type][min_coverage][alpha_val]["train_acc_lb"].append(train_acc_lb)
+                results_dict[bb_type][min_coverage][alpha_val]["test_acc_lb"].append(test_acc_lb)
                 results_dict[bb_type][min_coverage][alpha_val]["test_acc_bb"].append(test_acc)
 
     plot_dicts = {}
@@ -84,7 +103,7 @@ for dataset in datasets:
             plot_dicts[bbtype][min_coverage]["train_accs_list"] = []
             plot_dicts[bbtype][min_coverage]["train_accs_list_std"] = []
             plot_dicts[bbtype][min_coverage]["train_accs_ub_list"] = []
-            plot_dicts[bbtype][min_coverage]["train_accs_lb_list"] = []
+            plot_dicts[bbtype][min_coverage]["test_accs_lb_list"] = []
             plot_dicts[bbtype][min_coverage]["test_accs_list"] = []
             plot_dicts[bbtype][min_coverage]["test_accs_list_std"] = []
             for alpha_val in results_dict[bbtype][min_coverage].keys():
@@ -98,7 +117,7 @@ for dataset in datasets:
                 plot_dicts[bbtype][min_coverage]["train_accs_list"].append(np.average(results_dict[bbtype][min_coverage][alpha_val]["train_acc_bb"]))
                 plot_dicts[bbtype][min_coverage]["train_accs_list_std"].append(np.std(results_dict[bbtype][min_coverage][alpha_val]["train_acc_bb"]))
                 plot_dicts[bbtype][min_coverage]["train_accs_ub_list"].append(np.average(results_dict[bbtype][min_coverage][alpha_val]["train_acc_ub"]))
-                plot_dicts[bbtype][min_coverage]["train_accs_lb_list"].append(np.average(results_dict[bbtype][min_coverage][alpha_val]["train_acc_lb"]))
+                plot_dicts[bbtype][min_coverage]["test_accs_lb_list"].append(np.average(results_dict[bbtype][min_coverage][alpha_val]["test_acc_lb"]))
                 plot_dicts[bbtype][min_coverage]["test_accs_list"].append(np.average(results_dict[bbtype][min_coverage][alpha_val]["test_acc_bb"]))
                 plot_dicts[bbtype][min_coverage]["test_accs_list_std"].append(np.std(results_dict[bbtype][min_coverage][alpha_val]["test_acc_bb"]))
 
@@ -131,8 +150,8 @@ for dataset in datasets:
                 plt.fill_between(plot_dicts[bbtype][min_coverage]["alpha_val_list"], plot_dicts[bbtype][min_coverage]["test_accs_list"] - plot_dicts[bbtype][min_coverage]["test_accs_list_std"], plot_dicts[bbtype][min_coverage]["test_accs_list"] + plot_dicts[bbtype][min_coverage]["test_accs_list_std"], color=accuracy_test_color, alpha=0.2)
             
             if show_lb_ub:
-                plt.plot(plot_dicts[bbtype][min_coverage]["alpha_val_list"], plot_dicts[bbtype][min_coverage]["train_accs_ub_list"], ':', c='black', marker='x')
-                plt.plot(plot_dicts[bbtype][min_coverage]["alpha_val_list"], plot_dicts[bbtype][min_coverage]["train_accs_lb_list"], ':', c='black', marker='x')
+                plt.plot(plot_dicts[bbtype][min_coverage]["alpha_val_list"], plot_dicts[bbtype][min_coverage]["train_accs_ub_list"], '--', c=accuracy_train_color)
+                plt.plot(plot_dicts[bbtype][min_coverage]["alpha_val_list"], plot_dicts[bbtype][min_coverage]["test_accs_lb_list"], '--', c=accuracy_test_color)
 
             # Find best value
             best_test_value = np.max(plot_dicts[bbtype][min_coverage]["test_accs_list"])
