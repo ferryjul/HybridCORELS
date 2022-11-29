@@ -2,7 +2,7 @@
 This is the code for paper Companion rule list
 We make small modification to unify the API with other models
 """
-
+import time
 import numpy as np
 import pandas as pd 
 import random
@@ -239,6 +239,8 @@ class CRL(object):
         obj_curr = self.__obj_func(curr_coverage)
 
         # Main iteration
+        if self.time_limit is not None:
+            start = time.process_time()
         for t in tqdm(range(iteration)):
             # Randomly perturb the current rulelist
             new_rule_idx = self.__propose_rule(curr_rule_idx)
@@ -270,10 +272,15 @@ class CRL(object):
                     curr_coverage = new_coverage
             # Lower the temperature
             temperature = T0 / math.log(2 + t)
-        return rule_idx_best, coverage_best, obj_best
-    
 
-    def fit(self, X, y, n_iteration=5000, init_temperature=0.001, random_state=42, premined_rules=False):
+            if self.time_limit is not None:
+                if time.process_time() - start > self.time_limit:
+                    break
+        return rule_idx_best, coverage_best, obj_best
+
+
+    def fit(self, X, y, n_iteration=5000, init_temperature=0.001, random_state=42, 
+                                            premined_rules=False, time_limit=None):
 
         """
         Build a HyRS from the training set (X, y).
@@ -294,6 +301,7 @@ class CRL(object):
         """
         # Set the seed for reproducability
         random.seed(random_state)
+        self.time_limit = time_limit
 
         # Store the training data
         self.df = X

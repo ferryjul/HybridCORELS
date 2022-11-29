@@ -40,7 +40,8 @@ hparams = {
 hyb_model = HybridRuleSetClassifier(bbox, **hparams)
 
 # Train the hybrid model
-hyb_model.fit(df_X["train"], y["train"], 200, T0=0.01, premined_rules=True, random_state=3)
+hyb_model.fit(df_X["train"], y["train"], 100, T0=0.01, premined_rules=True, 
+                                            random_state=3, time_limit=60)
 
 # Print the RuleSet
 positive_rules = [hyb_model.prules[i] for i in hyb_model.positive_rule_set]
@@ -58,14 +59,15 @@ print("--------------- CRL ---------------\n")
 # Set parameters
 hparams = {
     "max_card" : 2,
-    "alpha" : 0.001
+    "alpha" : 0.01
 }
 
 # Define a hybrid model
 hyb_model = CRL(bbox, **hparams)
 
 # Train the hybrid model
-hyb_model.fit(df_X["train"], y["train"], random_state=random_state_param+1, premined_rules=True)
+hyb_model.fit(df_X["train"], y["train"], n_iteration=50000, random_state=random_state_param+1, 
+                                                            premined_rules=True, time_limit=60)
 output_rules, rule_coverage, test_acc = hyb_model.test(df_X["test"],y["test"])
 
 # Print the RuleList

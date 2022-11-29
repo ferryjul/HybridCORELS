@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 import operator
 from dataclasses import dataclass
 from tqdm import tqdm
+import time
 
 from rule_mining import generate_rulespace, screen_rules
 
@@ -62,7 +63,7 @@ class HybridRuleSetClassifier(object):
 
 
     def fit(self, X, y, n_iteration=5000, T0=0.01, interpretability='size', print_progress=False, 
-                                                   random_state=42, premined_rules=False):
+                                                random_state=42, premined_rules=False, time_limit=None):
         """
         Build a HyRS from the training set (X, y).
 
@@ -137,6 +138,8 @@ class HybridRuleSetClassifier(object):
 
         # Main Loop
         self.actions = []
+        if time_limit is not None:
+            start = time.process_time()
         for iter in tqdm(range(n_iteration), disable=print_progress):
             
             # Propose new RuleSets
@@ -178,6 +181,10 @@ class HybridRuleSetClassifier(object):
                 if print_progress:
                     print(f"\n** iter={iter} ** \n {obj_new:.3f}(obj) = " +\
                         f"{o1_new:.3f}(error) + alpha * {o2_new:d}(interp) + beta * {o3_new:.3f}(1-coverage)")
+                    
+            if time_limit is not None:
+                if time.process_time() - start > time_limit:
+                    break
         
         # Save the optimal rule sets as attributes
         self.positive_rule_set = prs_opt
