@@ -399,7 +399,7 @@ class BlackBox:
         def objective(local_params):
             global n_evals
             local_params["random_state"] = self.random_state_value
-            print(local_params)
+            #print(local_params)
             for p in to_int_params:
                 if not local_params[p] is None:
                     local_params[p] = int(local_params[p])
