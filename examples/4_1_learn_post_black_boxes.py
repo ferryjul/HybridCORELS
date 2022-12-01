@@ -5,8 +5,8 @@ from sklearn.ensemble import RandomForestClassifier
 from HyRS import HybridRuleSetClassifier
 from local_config import ccanada_expes
 import os
-import warnings
-warnings.filterwarnings("ignore")
+#import warnings
+#warnings.filterwarnings("ignore")
 import argparse
 from exp_utils import get_data, to_df
 from black_box_models import BlackBox
