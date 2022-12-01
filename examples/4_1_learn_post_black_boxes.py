@@ -1,8 +1,5 @@
 import argparse
 import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from HyRS import HybridRuleSetClassifier
 from local_config import ccanada_expes
 import os
 #import warnings
@@ -19,7 +16,7 @@ for rs in rseeds:
     for bt in bbox_types:
         params.append([rs, bt]) 
 
-if ccanada_expes: # one core performs operations for all values of alpha for all black-boxes
+if ccanada_expes:
     from mpi4py import MPI
     script_verbose = 0
     bbox_verbose = False
@@ -54,10 +51,13 @@ datasets = ["compas", "adult", "acs_employ"]
 dataset_name = datasets[args.dataset]
 
 # Get the data
+if script_verbose > 0:
+    print("Loading the data...")
 X, y, features, prediction = get_data(dataset_name, {"train" : 0.6, "valid" : 0.20, "test" : 0.20}, 
                                 random_state_param=rseed)
 df_X = to_df(X, features)
-
+if script_verbose > 0:
+    print("Data loaded!")
 #### Black Box ####
 model_path = f"models/{dataset_name}_{bbox_type}_{rseed}.pickle"
 if not os.path.exists(model_path):
