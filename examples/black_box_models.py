@@ -3,7 +3,7 @@ The main object to be used is the BlackBox class
 Careful: if your version of sklearn is too old you might get errors! '''
 
 # Create and train the hyperparameter-optimized black-box model
-from hyperopt import tpe, hp # , Trials
+from hyperopt import tpe, hp, Trials
 from hyperopt.fmin import fmin
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
@@ -397,7 +397,9 @@ class BlackBox:
         
         # find best params
         def objective(local_params):
+            global n_evals
             local_params["random_state"] = self.random_state_value
+            print(local_params)
             for p in to_int_params:
                 if not local_params[p] is None:
                     local_params[p] = int(local_params[p])
@@ -406,12 +408,15 @@ class BlackBox:
             model.fit(X_train,y_train,sample_weight=sample_weight_train)
             return (1.0 - model.score(X_val, y_val, sample_weight=sample_weight_val)) # minimize validation error
         
-        #trials = Trials()
+        trials = Trials()
 
         best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,
                   rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, 
-                  return_argmin=False, timeout=self.time_limit) # trials=trials,  
-
+                  return_argmin=False, timeout=self.time_limit, trials=trials)
+                  
+        self.trials_details = trials.trials
+        self.n_evals = len(trials.results)
+        
         best = correct_names(best, to_int_params)
         
         best["random_state"] = self.random_state_value

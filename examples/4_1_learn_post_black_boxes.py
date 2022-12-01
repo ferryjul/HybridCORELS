@@ -47,14 +47,14 @@ args = parser.parse_args()
 
 
 #time_limit = args.time_limit
-time_limit = 600
+time_limit = 20 * 3600
 n_iters = 100
 
 datasets = ["compas", "adult", "acs_employ"]
 dataset_name = datasets[args.dataset]
 
 # Get the data
-X, y, features, prediction = get_data(dataset_name, {"train" : 0.7, "valid" : 0.15, "test" : 0.15}, 
+X, y, features, prediction = get_data(dataset_name, {"train" : 0.6, "valid" : 0.20, "test" : 0.20}, 
                                 random_state_param=rseed)
 df_X = to_df(X, features)
 
@@ -81,6 +81,10 @@ trials_details = bbox.trials_details
 n_evals = bbox.n_evals
 res = [[rseed, bbox_type, train, time_limit, n_iters, n_evals, bbox_acc_train, bbox_acc_v, bbox_acc_t, bbox.black_box_model, model_path, trials_details]]
 
+# Gather the results for the 5 folds on process 0
+if ccanada_expes:
+    res = comm.gather(res, root=0)
+    
 if rank == 0 or not ccanada_expes:
     # save results
     fileName = './results/results_4_1_learn_post_black_boxes_%s.csv' %(dataset_name) #_proportions
