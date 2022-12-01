@@ -63,7 +63,7 @@ model_path = f"models/{dataset_name}_{bbox_type}_{rseed}.pickle"
 if not os.path.exists(model_path):
     if script_verbose > 0:
         print("Fitting the Black Box\n")
-    bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, n_iter=n_iters, time_limit=time_limit, X_val=df_X["valid"], y_val=y["valid"])
+    bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, random_state_value=rseed, n_iter=n_iters, time_limit=time_limit, X_val=df_X["valid"], y_val=y["valid"])
     bbox.fit(df_X["train"], y["train"])
     bbox.save(model_path)
     train = 'Yes'
@@ -84,7 +84,7 @@ res = [[rseed, bbox_type, train, time_limit, n_iters, n_evals, bbox_acc_train, b
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
     res = comm.gather(res, root=0)
-    
+
 if rank == 0 or not ccanada_expes:
     # save results
     fileName = './results/results_4_1_learn_post_black_boxes_%s.csv' %(dataset_name) #_proportions
