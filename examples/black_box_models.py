@@ -26,27 +26,11 @@ def _forest_class_weight(name: str):
     """
     return hp.choice(name, ["balanced", "balanced_subsample", None])
 
-def _random_forest_regressor_criterion(name: str):
-    """
-    Declaration of search space 'criterion' parameter for
-     random forest regressor
-    Parameter 'poisson' is also available. Not implemented since
-     'poisson' is only available for non-negative y data
-    """
-    return hp.choice(name, ["squared_error", "absolute_error"])
-
-def _extra_trees_regressor_criterion(name: str):
-    """
-    Declaration of search space 'criterion' parameter for
-     extra trees regressor
-    """
-    return hp.choice(name, ["squared_error", "absolute_error"])
-
 def _forest_n_estimators(name: str):
     """
     Declaration search space 'n_estimators' parameter
     """
-    return hp.qloguniform(name, np.log(9.5), np.log(3000.5), 1)
+    return hp.qloguniform(name, np.log(9.5), np.log(500.5), 1)#np.log(3000.5), 1)
 
 def _forest_max_depth(name: str):
     """
@@ -410,9 +394,18 @@ class BlackBox:
         
         trials = Trials()
 
-        best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,
-                  rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, 
-                  return_argmin=False, timeout=self.time_limit, trials=trials)
+        # Old way: single call to FMin, all iters have global timeout together
+        #best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=self.n_iter,
+        #          rstate=np.random.default_rng(self.random_state_value), show_progressbar=self.verbosity, 
+        #          return_argmin=False, timeout=self.time_limit, trials=trials)
+
+        # New way: individual calls to FMin, each iter has its own timeout
+        rstate_object = np.random.default_rng(self.random_state_value)
+        for iter_id in range(1,self.n_iter+1):
+            best=fmin(fn=objective, space=params, algo=tpe.suggest, max_evals=iter_id,
+                    rstate=rstate_object, show_progressbar=self.verbosity, 
+                    return_argmin=False, timeout=(self.time_limit / self.n_iter), trials=trials)
+
                   
         self.trials_details = trials.trials
         self.n_evals = len(trials.results)

@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 
 #time_limit = args.time_limit
-time_limit = int(23.5 * 3600)
+time_limit = int(34.0 * 3600)
 n_iters = 100
 
 datasets = ["compas", "adult", "acs_employ"]
