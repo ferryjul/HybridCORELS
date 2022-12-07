@@ -60,7 +60,7 @@ if verbosity:
 bbox = BlackBox(bb_type=bbox_type).load(model_path)
 
 # Interpretable part training params
-time_limit = 3600 #3600 # seconds
+time_limit = 3600 # seconds
 interpr_mem = 8000 # MB
 method = "HybridCORELSPost"
 from HybridCORELS import *
@@ -111,16 +111,22 @@ hyb_model.fit(X_train, y_train, time_limit=time_limit, features=features, predic
 yhat, covered_index = hyb_model.predict_with_type(X_val)
 overall_acc_v = np.mean(yhat == y_val)
 rule_coverage_v = np.sum(covered_index) / len(covered_index)
+interpr_indices = np.where(covered_index == 1)
+interpr_accuracy_v = np.mean(yhat[interpr_indices] == y_val[interpr_indices])
 
 # Test performance
 yhat, covered_index = hyb_model.predict_with_type(X_test)
 overall_acc_t =  np.mean(yhat == y_test)
 rule_coverage_t = np.sum(covered_index) / len(covered_index)
+interpr_indices = np.where(covered_index == 1)
+interpr_accuracy_t = np.mean(yhat[interpr_indices] == y_test[interpr_indices])
 
 # Train performance
 yhat, covered_index = hyb_model.predict_with_type(X_train)
 overall_acc_train =  np.mean(yhat == y_train)
 rule_coverage_train = np.sum(covered_index) / len(covered_index)
+interpr_indices = np.where(covered_index == 1)
+interpr_accuracy_train = np.mean(yhat[interpr_indices] == y_train[interpr_indices])
 
 # String description of the model
 descr = hyb_model.__str__()
@@ -128,7 +134,7 @@ status = hyb_model.get_status()
 sparsity = hyb_model.get_sparsity()
 
 # Result for one MPI runner
-res = [[beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, rule_coverage_train, overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t, descr, sparsity]]
+res = [[beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, interpr_accuracy_train, rule_coverage_train, overall_acc_v, interpr_accuracy_v, rule_coverage_v, overall_acc_t, interpr_accuracy_t, rule_coverage_t, descr, sparsity]]
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -140,7 +146,7 @@ if rank == 0 or not ccanada_expes:
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'transparency_train', 'accuracy_valid', 'transparency_valid', 'accuracy_test', 'transparency_test', 'model', 'prefix length'])
+        csv_writer.writerow(['beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'prefix_accuracy_train', 'transparency_train', 'accuracy_valid', 'prefix_accuracy_valid', 'transparency_valid', 'accuracy_test', 'prefix_accuracy_test', 'transparency_test', 'model', 'prefix length'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):
