@@ -3,6 +3,7 @@ from HybridCORELS import *
 
 dataset_name = "compas"
 min_coverage = 0.975
+n_iter_param = 10**9
 
 rseeds = [0, 1, 2, 3, 4]
 min_support_list = [0.01, 0.05, 0.1]  # Min Supports of Rules in Search Space
