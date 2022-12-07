@@ -33,10 +33,13 @@ def results_hybrid_post(bbox, df_X, y, min_coverage, time_limit, **corels_params
     overall_acc_t =  np.mean(yhat == y["test"])
     rule_coverage_t = np.sum(covered_index) / len(covered_index)
 
+    # String description of the model
+    descr = hyb_model.__str__()
+
     # Store in dataframe
-    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t]], 
+    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t, descr]], 
                             columns=['accuracy_valid', 'transparency_valid',
-                                     'accuracy_test', 'transparency_test'])
+                                     'accuracy_test', 'transparency_test', 'model'])
 
     return df_res
 
@@ -60,6 +63,7 @@ def results_crl(bbox, df_X, y, alpha, time_limit, init_temperature):
         row['transparency_valid'] = rule_coverage_v[i]
         row['accuracy_test'] = overall_accuracy_t[i]
         row['transparency_test'] = rule_coverage_t[i]
+        row['model'] = hyb_model.get_description(df_X["test"], y["test"])
         row_list.append(row)
     df_res = pd.DataFrame(row_list)
 
@@ -86,10 +90,13 @@ def results_hyrs(bbox, df_X, y, hparams_hyrs, time_limit, init_temperature):
     overall_acc_t = np.mean(yhat == y["test"]) 
     rule_coverage_t = np.sum(covered_index) / len(covered_index)
 
+    # String description of the model
+    descr = hyb_model.get_description(df_X["test"], y["test"])
+
     # Store in dataframe
-    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t]], 
+    df_res = pd.DataFrame([[overall_acc_v, rule_coverage_v, overall_acc_t, rule_coverage_t, descr]], 
                             columns=['accuracy_valid', 'transparency_valid',
-                                     'accuracy_test', 'transparency_test'])
+                                     'accuracy_test', 'transparency_test', "model"])
 
     return df_res
 
@@ -136,8 +143,9 @@ def main():
     #### HybridCORELSPostClassifier ####
     print("Fitting HybridCORELSPostClassifier\n")
     # Where to store results
-    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
-                                                                 'accuracy_test', 'transparency_test'])
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0, bbox.__str__()]], 
+                        columns=['accuracy_valid', 'transparency_valid',
+                                 'accuracy_test', 'transparency_test', "model"])
     # Set parameters
     corels_params = {
         'max_card' : 1,
@@ -149,7 +157,7 @@ def main():
     cs = [1e-2, 1e-3, 1e-4] # Regularisation CORELS
     policies = ['objective', 'lower_bound', 'bfs'] # Priority Queue Criterion
     min_coverages = [0.25, 0.50, 0.75, 0.85, 0.95] # Minimum Coverage
-    min_supports = [0.01, 0.05] # Min Supports of Rules in Search Space
+    min_supports = [0.01, 0.05, 0.1] # Min Supports of Rules in Search Space
     for policy in policies:
         for c in cs:
             for min_coverage in min_coverages:
@@ -169,8 +177,9 @@ def main():
     #### CRL ####
     print("Fitting CRL\n")
     # Where to store results
-    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
-                                                                 'accuracy_test', 'transparency_test'])
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0, bbox.__str__()]], 
+                    columns=['accuracy_valid', 'transparency_valid',
+                             'accuracy_test', 'transparency_test', "model"])
     # Set parameters
     temperatures = np.linspace(0.001, 0.01, num=10) # Temperature for Simulated Annealing
     alphas = np.logspace(-3, -1, 10) # Regularization Parameter [0, 1] (higher means shorted rulelists)
@@ -187,8 +196,9 @@ def main():
     #### HyRS ####
     print("Fitting HyRS\n")
     # Where to store results
-    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0]], columns=['accuracy_valid', 'transparency_valid',
-                                                                 'accuracy_test', 'transparency_test'])
+    df = pd.DataFrame([[bbox_acc_v, 0, bbox_acc_t, 0, bbox.__str__()]], 
+                    columns=['accuracy_valid', 'transparency_valid',
+                             'accuracy_test', 'transparency_test', "model"])
     # Set parameters
     hparams_hyrs = {
         "alpha" : 0.001,

@@ -449,6 +449,36 @@ class CRL(object):
 
 
 
+    def get_description(self, X, y):
+        """
+        Return a string description of the Hybrid Model. Datasets are provided 
+        to compute the accuracy and coverage
+
+        Arguments
+        ---------
+        X : pd.DataFrame, shape = [n_samples, n_features]
+            The training input samples. All features must be binary, and 
+            must be the same as those of the data used for training.
+        y : np.array, shape = [n_samples]
+            The target values for the training input. Must be binary.
+
+        Returns
+        -------
+        s : str
+            The string description.
+        """
+        output_rules, rule_coverage, acc = self.test(X, y)
+
+        s = "CRL\n"
+        s += " ACC ,  C  ,  Rule\n"
+        for (i, j, k, p) in zip(acc, output_rules, rule_coverage, self.coverage.choose):
+            s += f"{i:.3f} {k:.3f} {j}=>{p}\n"
+        s += "\n"
+        
+        return s
+
+
+
 def accumulate(iterable, func=operator.add):
     # accumulate([1,2,3,4,5]) --> 1 3 6 10 15
     # accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120

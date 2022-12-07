@@ -41,18 +41,9 @@ hyb_model = HybridRuleSetClassifier(bbox, **hparams)
 
 # Train the hybrid model
 hyb_model.fit(df_X["train"], y["train"], 100, T0=0.01, premined_rules=True, 
-                                            random_state=3, time_limit=60)
+                                            random_state=3, time_limit=10)
+print(hyb_model.get_description(df_X["test"], y["test"]))
 
-# Print the RuleSet
-positive_rules = [hyb_model.prules[i] for i in hyb_model.positive_rule_set]
-negative_rules = [hyb_model.nrules[i] for i in hyb_model.negative_rule_set]
-print("Positive rules : \n", positive_rules)
-print("Negative rules : \n", negative_rules, "\n")
-
-# Test performance
-yhat, covered_index = hyb_model.predict_with_type(df_X["test"])
-print("HyRS Accuracy : ", np.mean(yhat == y["test"])) 
-print("Coverage of RuleSet : ", np.sum(covered_index) / len(covered_index), "\n")
 
 
 print("--------------- CRL ---------------\n")
@@ -67,15 +58,8 @@ hyb_model = CRL(bbox, **hparams)
 
 # Train the hybrid model
 hyb_model.fit(df_X["train"], y["train"], n_iteration=50000, random_state=random_state_param+1, 
-                                                            premined_rules=True, time_limit=60)
-output_rules, rule_coverage, test_acc = hyb_model.test(df_X["test"],y["test"])
-
-# Print the RuleList
-print(" ACC ,  C  ,  Rule")
-for (i,j,k) in zip(test_acc, output_rules, rule_coverage):
-    print(f"{i:.3f}", f"{k:.3f}", j)
-print("\n")
-
+                                                            premined_rules=True, time_limit=10)
+print(hyb_model.get_description(df_X["test"], y["test"]))
 
 
 print("---------------  HybridCORELSPreClassifier ---------------")

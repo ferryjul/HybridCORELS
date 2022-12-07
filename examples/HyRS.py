@@ -509,7 +509,40 @@ class HybridRuleSetClassifier(object):
             The classifications of the input samples.
         """
         return self.predict_with_type(X)[0]
+    
 
+
+    def get_description(self, X, y):
+        """
+        Return a string description of the Hybrid Model. Datasets are provided 
+        to compute the accuracy and coverage
+
+        Arguments
+        ---------
+        X : pd.DataFrame, shape = [n_samples, n_features]
+            The training input samples. All features must be binary, and 
+            must be the same as those of the data used for training.
+        y : np.array, shape = [n_samples]
+            The target values for the training input. Must be binary.
+        
+        Returns
+        -------
+        s : str
+            The string description.
+        """ 
+
+        s = "HyRS\n"
+        positive_rules = [self.prules[i] for i in self.positive_rule_set]
+        negative_rules = [self.nrules[i] for i in self.negative_rule_set]
+        s += f"Positive rules : \n {positive_rules}\n"
+        s += f"Negative rules : \n {negative_rules}\n"
+
+        # Test performance
+        yhat, covered_index = self.predict_with_type(X)
+        s += f"HyRS Accuracy : {np.mean(yhat == y):.3f}\n"
+        s += f"Coverage of RuleSet : {np.sum(covered_index) / len(covered_index):.3f}\n"
+        
+        return s
 
 
 
