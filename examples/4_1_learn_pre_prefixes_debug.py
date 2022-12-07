@@ -15,7 +15,7 @@ for policy in policies:
         for min_support_param in min_support_list:
             for rseed in rseeds:
                 model_path = "models/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s.pickle" %(dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
-                hyb_model = HybridCORELSPreClassifier.load("models/%s"%model_file)
+                hyb_model = HybridCORELSPreClassifier.load("models/%s"%model_path)
                 sparsity = hyb_model.get_sparsity()
                 if sparsity <= 1:
                     print(model_path)
