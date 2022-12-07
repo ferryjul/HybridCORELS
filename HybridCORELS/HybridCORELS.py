@@ -241,7 +241,8 @@ class HybridCORELSPreClassifier:
             if "hybrid" in self.verbosity:
                 print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
         else:
-            self.black_box_accuracy = 1.00            
+            self.black_box_majority = 0.00 # arbitrary
+            self.black_box_accuracy = 0.00 # arbitrary            
         # Done!
         self.is_fitted = True
 
@@ -342,7 +343,9 @@ class HybridCORELSPreClassifier:
 
     def __str__(self):
         s = "HybridCORELSPreClassifier"
-
+        if not hasattr(self, 'black_box_majority'): # compatibility with old version
+            self.black_box_majority = 0.00
+            self.black_box_accuracy = 0.00
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
             s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.5f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
@@ -571,7 +574,8 @@ class HybridCORELSPostClassifier:
             if "hybrid" in self.verbosity:
                 print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
         else:
-            self.black_box_accuracy = 1.00            
+            self.black_box_majority = 0.00 # arbitrary
+            self.black_box_accuracy = 0.00 # arbitrary           
 
         # Done!
         self.is_fitted = True
@@ -675,7 +679,9 @@ class HybridCORELSPostClassifier:
 
     def __str__(self):
         s = "HybridCORELSPostClassifier"
-
+        if not hasattr(self, 'black_box_majority'): # compatibility with old version
+            self.black_box_majority = 0.00
+            self.black_box_accuracy = 0.00
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
             s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
