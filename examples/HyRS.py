@@ -140,7 +140,7 @@ class HybridRuleSetClassifier(object):
         self.actions = []
         if time_limit is not None:
             start = time.process_time()
-        for iter in tqdm(range(n_iteration), disable=print_progress):
+        for iter in tqdm(range(n_iteration), disable=not(print_progress)):
             
             # Propose new RuleSets
             prs_new, nrs_new, coverage_new = self.__propose_rs(Yhat_curr, prs_curr, nrs_curr, coverage_curr)
