@@ -243,7 +243,7 @@ def correct_names(best, to_int_params):
 
 # Here is the main object
 class BlackBox:
-    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100, time_limit=None, X_val=None, y_val=None):
+    def __init__(self, bb_type, verbosity=False, random_state_value=42, n_iter=100, time_limit=None, X_val=None, y_val=None, sample_weights_val=None):
         '''
         bb_type: str, type of black-box model to be trained
             Supported BB types: 
@@ -281,6 +281,7 @@ class BlackBox:
             self.provided_validation_data = True 
             self.X_val = X_val
             self.y_val = y_val 
+            self.sample_weights_validation = sample_weights_val
 
     def fit(self, X, y, sample_weight=None):
         """
@@ -326,7 +327,7 @@ class BlackBox:
             X_train = X
             y_train = y
             sample_weight_train = sample_weight
-            sample_weight_val = None
+            sample_weight_val = self.sample_weights_validation
             X_val = self.X_val
             y_val = self.y_val
 

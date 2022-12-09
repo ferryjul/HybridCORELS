@@ -94,8 +94,14 @@ if verbosity:
     print("Loaded model: ", hyb_model)
     print("Status: ", hyb_model.get_status())
 
+# Compute weights for validation set
+val_preds, val_types = hyb_model.predict_with_type(X_val)
+not_captured_indices = np.where(val_types == 0)
+sample_weights_val = np.ones(y_val.shape)
+sample_weights_val[not_captured_indices] = np.exp(alpha_value)
+sample_weights_val /= np.sum(sample_weights_val)
 
-bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, random_state_value=rseed, n_iter=n_iters, time_limit=time_limit, X_val=X_val, y_val=y_val)
+bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, random_state_value=rseed, n_iter=n_iters, time_limit=time_limit, X_val=X_val, y_val=y_val, sample_weights_val=sample_weights_val)
 
 hyb_model.refit_black_box(X_train, y_train, alpha_value,  bbox)
 
