@@ -8,7 +8,7 @@ import pickle
 from black_box_models import BlackBox
 
 time_limit = int(15.0 * 3600)
-n_iters = 100
+n_iters = 10
 method = "HybridCORELSPre"
 
 if ccanada_expes:
@@ -127,7 +127,7 @@ status = hyb_model.get_status()
 sparsity = hyb_model.get_sparsity()
 
 # Result for one MPI runner
-res = [[beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, interpr_accuracy_train, rule_coverage_train, overall_acc_v, interpr_accuracy_v, rule_coverage_v, overall_acc_t, interpr_accuracy_t, rule_coverage_t, descr, sparsity]]
+res = [[rseed, bbox_type, beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, interpr_accuracy_train, rule_coverage_train, overall_acc_v, interpr_accuracy_v, rule_coverage_v, overall_acc_t, interpr_accuracy_t, rule_coverage_t, descr, sparsity]]
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -135,11 +135,11 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_2_pre_%s_%s_%d_%s.csv' %(method, dataset_name, rseed, bbox_type) #_proportions
+    fileName = './results/results_4_2_pre_%s_%s.csv' %(method, dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'prefix_accuracy_train', 'transparency_train', 'accuracy_valid', 'prefix_accuracy_valid', 'transparency_valid', 'accuracy_test', 'prefix_accuracy_test', 'transparency_test', 'model', 'prefix length'])
+        csv_writer.writerow(['Seed', 'Black-box type', 'beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'prefix_accuracy_train', 'transparency_train', 'accuracy_valid', 'prefix_accuracy_valid', 'transparency_valid', 'accuracy_test', 'prefix_accuracy_test', 'transparency_test', 'model', 'prefix length'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):
