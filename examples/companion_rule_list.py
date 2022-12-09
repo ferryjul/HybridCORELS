@@ -241,7 +241,7 @@ class CRL(object):
         # Main iteration
         if self.time_limit is not None:
             start = time.process_time()
-        for t in tqdm(range(iteration)):
+        for t in tqdm(range(iteration), disable=not(self.print_progress)):
             # Randomly perturb the current rulelist
             new_rule_idx = self.__propose_rule(curr_rule_idx)
 
@@ -280,7 +280,7 @@ class CRL(object):
 
 
     def fit(self, X, y, n_iteration=5000, init_temperature=0.001, random_state=42, 
-                                            premined_rules=False, time_limit=None):
+                                            premined_rules=False, time_limit=None, print_progress=False):
 
         """
         Build a HyRS from the training set (X, y).
@@ -303,6 +303,8 @@ class CRL(object):
         random.seed(random_state)
         self.time_limit = time_limit
 
+        self.print_progress = print_progress
+        
         # Store the training data
         self.df = X
         self.Y = y
