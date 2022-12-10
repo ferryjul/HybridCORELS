@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, Gradien
 import pickle 
 from black_box_models import BlackBox
 
-time_limit = int(15.0 * 3600)
+time_limit = int(35.0 * 3600)
 n_iters = 100
 method = "HybridCORELSPre"
 
