@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, Gradien
 import pickle 
 from black_box_models import BlackBox
 
-time_limit = int(35.0 * 3600)
+time_limit = int(20.0 * 3600)
 n_iters = 100
 method = "HybridCORELSPre"
 
@@ -85,7 +85,7 @@ with open('%s/%s.pickle' %(dict_save_folder, dict_name), 'rb') as handle:
     print("Dataset %s, Fold %d, Min Coverage %.2f, best params are :" %(dataset_name, rseed, min_coverage), best_params_dict)
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
-alpha_value = 1 # best value based on experiments part 3 (pre-paradigm-specific)
+alpha_value = 2 # best value based on experiments part 3 (pre-paradigm-specific)
 
 model_path = "%s/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s.pickle" %(models_folder, dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
 hyb_model = HybridCORELSPreClassifier.load(model_path)
@@ -97,9 +97,8 @@ if verbosity:
 # Compute weights for validation set
 val_preds, val_types = hyb_model.predict_with_type(X_val)
 not_captured_indices = np.where(val_types == 0)
-sample_weights_val = np.ones(y_val.shape)
-sample_weights_val[not_captured_indices] = np.exp(alpha_value)
-sample_weights_val /= np.sum(sample_weights_val)
+sample_weights_val = np.zeros(y_val.shape)
+sample_weights_val[not_captured_indices] = 1
 
 bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, random_state_value=rseed, n_iter=n_iters, time_limit=time_limit, X_val=X_val, y_val=y_val, sample_weights_val=sample_weights_val)
 
@@ -141,7 +140,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_2_pre_%s_%s.csv' %(method, dataset_name) #_proportions
+    fileName = './results/results_4_2_pre_%s_%s_new_alpha_2.csv' %(method, dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
