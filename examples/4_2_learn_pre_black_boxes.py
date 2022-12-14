@@ -85,7 +85,7 @@ with open('%s/%s.pickle' %(dict_save_folder, dict_name), 'rb') as handle:
     print("Dataset %s, Fold %d, Min Coverage %.2f, best params are :" %(dataset_name, rseed, min_coverage), best_params_dict)
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
-alpha_value = 2 # best value based on experiments part 3 (pre-paradigm-specific)
+alpha_value = 1 # best value based on experiments part 3 (pre-paradigm-specific)
 
 model_path = "%s/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s.pickle" %(models_folder, dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
 hyb_model = HybridCORELSPreClassifier.load(model_path)
@@ -140,7 +140,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_2_pre_%s_%s_new_alpha_2.csv' %(method, dataset_name) #_proportions
+    fileName = './results/results_4_2_pre_%s_%s_new_alpha_1.csv' %(method, dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
