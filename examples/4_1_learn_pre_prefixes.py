@@ -86,13 +86,13 @@ bbox_type="fixed_rf"
 
 # Create the hybrid model
 bbox = RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=5) #useless
-hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)
+hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, obj_mode='collab', **corels_params)
 
 # Train the hybrid model
 hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction, time_limit=interpr_tout, memory_limit=interpr_mem)
 
 # Compute and save all metrics
-model_path = "models/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s.pickle" %(dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
+model_path = "models/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s_collab.pickle" %(dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
 hyb_model.save(model_path)
 
 # Train set
@@ -140,7 +140,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_1_learn_pre_prefixes_%s_%.3f.csv' %(dataset_name, min_coverage) #_proportions
+    fileName = './results/results_4_1_learn_pre_prefixes_%s_%.3f_collab.csv' %(dataset_name, min_coverage) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
