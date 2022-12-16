@@ -6,6 +6,6 @@
 #SBATCH --job-name=expes_pre_last
 #SBATCH -o slurm_out/slurmout_%A.out
 #SBATCH -e slurm_out/slurmout_%A.errarray
-#SBATCH --array=0-1
+#SBATCH --array=0
 
 srun -W 72000 -n 180 python3.10 4_2_learn_pre_black_boxes.py --dataset=${SLURM_ARRAY_TASK_ID}
