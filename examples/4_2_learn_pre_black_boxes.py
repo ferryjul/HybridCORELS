@@ -75,19 +75,20 @@ X_train, y_train = X['train'], y['train']
 X_test, y_test =  X['test'], y['test']
 
 # 1) Retrieve the hybrid model with best prefix
-dict_name = '%s_%d_%.3f.pickle' %(dataset_name, rseed, min_coverage)
+dict_name = '%s_%d_%.3f_collab.pickle' %(dataset_name, rseed, min_coverage)
 
 with open('%s/%s.pickle' %(dict_save_folder, dict_name), 'rb') as handle:
     best_params_dict = pickle.load(handle)
     policy = best_params_dict['policy']
     min_support_param = best_params_dict['min_support_param']
     cValue = best_params_dict['cValue']
+    ex_accuracy_ub_val = best_params_dict['validation_accuracy_prefix']
     print("Dataset %s, Fold %d, Min Coverage %.2f, best params are :" %(dataset_name, rseed, min_coverage), best_params_dict)
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
 alpha_value = 1 # best value based on experiments part 3 (pre-paradigm-specific)
 
-model_path = "%s/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s.pickle" %(models_folder, dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
+model_path = "%s/pre_prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s_collab.pickle" %(models_folder, dataset_name, rseed, min_coverage, cValue, n_iter_param, min_support_param, policy)
 hyb_model = HybridCORELSPreClassifier.load(model_path)
 
 if verbosity:
@@ -99,6 +100,9 @@ val_preds, val_types = hyb_model.predict_with_type(X_val)
 not_captured_indices = np.where(val_types == 0)
 sample_weights_val = np.zeros(y_val.shape)
 sample_weights_val[not_captured_indices] = 1
+
+#BB_X_val = X_val[not_captured_indices]
+#BB_y_val = y_val[not_captured_indices]
 
 bbox = BlackBox(bb_type=bbox_type, verbosity=bbox_verbose, random_state_value=rseed, n_iter=n_iters, time_limit=time_limit, X_val=X_val, y_val=y_val, sample_weights_val=sample_weights_val)
 
@@ -132,7 +136,7 @@ status = hyb_model.get_status()
 sparsity = hyb_model.get_sparsity()
 
 # Result for one MPI runner
-res = [[rseed, bbox_type, beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, interpr_accuracy_train, rule_coverage_train, overall_acc_v, interpr_accuracy_v, rule_coverage_v, overall_acc_t, interpr_accuracy_t, rule_coverage_t, descr, sparsity]]
+res = [[rseed, bbox_type, beta_value, min_coverage, policy, min_support_param, cValue, status, overall_acc_train, interpr_accuracy_train, rule_coverage_train, ex_accuracy_ub_val, overall_acc_v, interpr_accuracy_v, rule_coverage_v, overall_acc_t, interpr_accuracy_t, rule_coverage_t, descr, sparsity]]
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -140,11 +144,11 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_2_pre_%s_%s_new_alpha_1.csv' %(method, dataset_name) #_proportions
+    fileName = './results/results_4_2_pre_%s_%s_collab.csv' %(method, dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Seed', 'Black-box type', 'beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'prefix_accuracy_train', 'transparency_train', 'accuracy_valid', 'prefix_accuracy_valid', 'transparency_valid', 'accuracy_test', 'prefix_accuracy_test', 'transparency_test', 'model', 'prefix length'])
+        csv_writer.writerow(['Seed', 'Black-box type', 'beta', 'min_coverage', 'policy', 'min support', 'lambda', 'search status', 'accuracy_train', 'prefix_accuracy_train', 'transparency_train', 'ex_accuracy_ub_valid', 'accuracy_valid', 'prefix_accuracy_valid', 'transparency_valid', 'accuracy_test', 'prefix_accuracy_test', 'transparency_test', 'model', 'prefix length'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):

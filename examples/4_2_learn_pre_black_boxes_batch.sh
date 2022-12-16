@@ -2,7 +2,7 @@
 
 #SBATCH -n 180
 #SBATCH --mem-per-cpu=9000
-#SBATCH --time=20:00:00
+#SBATCH --time=21:00:00
 #SBATCH --job-name=expes_pre_last
 #SBATCH -o slurm_out/slurmout_%A.out
 #SBATCH -e slurm_out/slurmout_%A.errarray
