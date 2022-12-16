@@ -81,7 +81,7 @@ black_box="fixed_rf"
 
 # Create the hybrid model
 bbox = RandomForestClassifier(random_state=42, min_samples_split=10, max_depth=10) #useless
-hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, lb_mode='tight', **corels_params)
+hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, min_coverage=min_coverage, **corels_params)
 
 # Train the hybrid model
 hyb_model.fit(X_train, y_train, features=features, prediction_name=prediction, time_limit=interpr_tout, memory_limit=interpr_mem)

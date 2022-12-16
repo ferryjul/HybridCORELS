@@ -61,7 +61,7 @@ for dataset_name in datasets:
                 cValue = best_params['c']
                 print("Dataset %s, Fold %d, Min Coverage %.2f, best params are :" %(dataset_name, random_state_value, min_coverage), best_params)
 
-                fileName = "./models_graham/prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s" %(dataset_name, random_state_value, min_coverage, cValue, n_iter_param, min_support_param, policy)
+                fileName = "./models_part_3/prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s" %(dataset_name, random_state_value, min_coverage, cValue, n_iter_param, min_support_param, policy)
                 try:
                     model = HybridCORELSPreClassifier.load(fileName)
                 except FileNotFoundError:

@@ -70,9 +70,9 @@ class PrefixCorelsPreClassifier:
         this value is also the maximum fraction of samples a rule can capture.
         Can be any value between 0.0 and 0.5.
 
-    lb_mode : str, optional (default='tight')
-        If 'tight', uses a new (tight) way of computing the lower bound of the B&B algorithm. Else, uses another computation (not tight but simpler).
-
+    obj_mode : str, optional (default:'no_collab')
+        If 'no_collab', only maximizes the prefix's accuracy
+        If 'collab', maximizes (prefix accuracy + BB accuracy UB) - i.e., takes care of the inconsistent examples let to the BB part.
 
     References
     ----------
@@ -97,7 +97,7 @@ class PrefixCorelsPreClassifier:
 
     def __init__(self, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
                  verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, 
-                 min_coverage=0.0, lb_mode='tight'):
+                 min_coverage=0.0, obj_mode='no_collab'):
         self.c = c
         self.n_iter = n_iter
         self.map_type = map_type
@@ -108,7 +108,7 @@ class PrefixCorelsPreClassifier:
         self.min_support = min_support
         self.beta=beta
         self.min_coverage = min_coverage
-        self.lb_mode = lb_mode
+        self.obj_mode = obj_mode
         self.status = 3
 
     def fit(self, X, y, features=[], prediction_name="prediction", time_limit = None, memory_limit=None):
@@ -173,6 +173,10 @@ class PrefixCorelsPreClassifier:
             raise TypeError("self.beta name must be a float, got: " + str(type(self.beta)))
         if not isinstance(self.min_coverage, float): # Min_Coverage is a new parameter for HybridCORELS (controlling the minimum coverage needed)
             raise TypeError("self.min_coverage name must be a float, got: " + str(type(self.min_coverage)))
+        if not isinstance(self.obj_mode, str):
+            raise TypeError("obj_mode must be a str in {'collab', 'no_collab'}, got: ", str(self.obj_mode))
+        if not self.obj_mode in ['collab', 'no_collab']:
+            raise ValueError("obj_mode must be a str in {'collab', 'no_collab'}, got: ", self.obj_mode)
 
         label = check_array(y, ndim=1)
         labels = np.stack([ np.invert(label), label ])
@@ -181,7 +185,7 @@ class PrefixCorelsPreClassifier:
 
         n_samples = samples.shape[0]
         n_features = samples.shape[1]
-        if self.lb_mode == 'tight':
+        if self.obj_mode == 'no_collab': # if no collab, obj is different and we need to compute additional structures here
             inconsistent_groups_indices, inconsistent_groups_min_card, inconsistent_groups_max_card = compute_inconsistent_groups(X, y)
         else:
             inconsistent_groups_indices, inconsistent_groups_min_card, inconsistent_groups_max_card = np.asarray([]), np.asarray([]), np.asarray([])

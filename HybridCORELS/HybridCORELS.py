@@ -18,8 +18,9 @@ class HybridCORELSPreClassifier:
     c, n_iter, map_type, policy, verbosity, ablation, max_card, min_support : arguments of the CORELS algorithm 
     (see CORELS' documentation for details)
 
-    lb_mode : str, optional (default='tight')
-        If 'tight', uses a new (tight) way of computing the lower bound of the B&B algorithm. Else, uses another computation (not tight but simpler).
+    obj_mode : str, optional (default:'no_collab')
+        If 'no_collab', only maximizes the prefix's accuracy
+        If 'collab', maximizes (prefix accuracy + BB accuracy UB) - i.e., takes care of the inconsistent examples let to the BB part.
 
     black_box_classifier: object for the black-box part of the interpretable model.
 
@@ -42,7 +43,7 @@ class HybridCORELSPreClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, black_box_classifier=None, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42, lb_mode='tight'):
+                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42, obj_mode='no_collab'):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -55,8 +56,8 @@ class HybridCORELSPreClassifier:
         self.beta = beta
         self.alpha = alpha
         self.min_coverage=min_coverage
-        self.lb_mode=lb_mode
-        self.interpretable_part = PrefixCorelsPreClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage,self.lb_mode)
+        self.obj_mode = obj_mode
+        self.interpretable_part = PrefixCorelsPreClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage, self.obj_mode)
         np.random.seed(random_state)
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:

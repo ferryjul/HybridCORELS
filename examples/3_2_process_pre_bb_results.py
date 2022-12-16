@@ -10,7 +10,7 @@ matplotlib.rcParams.update({'font.size': 12.0}) # default = 10.0
 
 accuracy_train_color = 'navy'
 accuracy_test_color = 'darkgreen'
-save_dir = "./results_graham"
+save_dir = "./results_part_3"
 datasets = ["adult", "compas", "acs_employ"]
 show_lb_ub = True # Important param!
 show_std = True

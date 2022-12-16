@@ -76,7 +76,7 @@ alpha_value = 10
 beta_value = 0.0
 # Define a hybrid model
 hyb_model = HybridCORELSPreClassifier(black_box_classifier=bbox, beta=beta_value, alpha=alpha_value, 
-                                      min_coverage=0.4, lb_mode='tight', **corels_params)
+                                      min_coverage=0.4, **corels_params)
 # Train the hybrid model
 hyb_model.fit(X["train"], y["train"], features=features)
 

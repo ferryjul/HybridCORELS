@@ -21,7 +21,7 @@ else: # for local debug, fixed parameters
     rank = 0
     size = 1
     verbositylist=["progress", "hybrid"]
-    models_folder = "models_graham"
+    models_folder = "models_part_3"
     verbosity = True
 
 parser = argparse.ArgumentParser(description='Learn BB part of prelearnt prefixes')

@@ -118,7 +118,12 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         //objective = lower_bound + beta*(double)((double)num_not_captured/(double)nsamples); // (double)(num_not_captured - default_correct) / nsamples;
         
         if(black_box_errors == nullptr){ // interpr-then-bb-training
-            objective = ((double)n_errors_overall/(double)(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+            if (inconsistent_groups_indices != NULL){ // no collab mode
+                objective = ((double)n_errors_overall/(double)(nsamples - num_not_captured)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+            } else { // collab mode
+                rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
+                objective = ((double)(n_errors_overall+num_not_captured_equivalent)/(double)(nsamples)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
+            }
         } else { // bb-then-interpr-training
             rule_vand(remaining_black_box_errors, black_box_errors[1].truthtable, not_captured, nsamples, &num_remaining_black_box_errors);
             objective = (((double) (n_errors_overall + num_remaining_black_box_errors))/(double)(nsamples)) + (len_prefix * c) + beta*(double)((double)num_not_captured/(double)nsamples);
@@ -131,7 +136,7 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         if (tree->has_minority()) { 
             if(black_box_errors == nullptr){ // interpr-then-bb-training
                 // Tight bound:
-                if (inconsistent_groups_indices != NULL){
+                if (inconsistent_groups_indices != NULL){ // no collab mode
                     int minority_to_capture = 0;
                     int total_incons_to_capture = 0;
                     double current_error_rate = (double)n_errors_overall/(double)(nsamples - num_not_captured);
@@ -146,14 +151,15 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
                         }
                     }
                     lower_bound = ((double)(n_errors_overall+minority_to_capture)/(double) (nsamples-(num_not_captured - total_incons_to_capture))) + (len_prefix * c);
-                } else {
-                    // Other simpler (but not tight) computation
-                    rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
+                    // Other (older) simpler (but not tight) computation
+                    // rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
                     // Right below occurs the new (tighter) bound computation
-                    lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
+                    // lower_bound = ((double)n_errors_overall/(double) (nsamples-num_not_captured_equivalent)) + (len_prefix * c);
                     // (it considers that in the best case we can never classify correctly more than all equivalent majorities of inconsistent groups)
                     // (and ignores minority for error computation for simplicity (or else, for the LB to be valid we should choose which groups to consider))
                     // (as done in the above, tight computation)
+                } else { // collab mode
+                    lower_bound = ((double)(n_errors_overall+num_not_captured_equivalent)/(double) (nsamples)) + (len_prefix * c);
                 }
             } else { // bb-then-interpr-training
                 rule_vand(not_captured_equivalent, not_captured, tree->minority(0).truthtable, nsamples, &num_not_captured_equivalent);
