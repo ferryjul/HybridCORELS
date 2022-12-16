@@ -1,4 +1,4 @@
-from exp_utils import get_data, to_df
+from exp_utils import get_data, to_df, computeAccuracyUpperBound
 import argparse
 from local_config import ccanada_expes
 from HybridCORELS import *
@@ -128,11 +128,15 @@ interpr_indices_val = np.where(preds_types_val == 1)
 black_box_accuracy_val= np.mean(preds_val[bb_indices_val] == y_val[bb_indices_val])
 interpr_accuracy_val = np.mean(preds_val[interpr_indices_val] == y_val[interpr_indices_val])
 
+# Criterion that will be used to select the model
+black_box_acc_upper_bound = computeAccuracyUpperBound(X_val[bb_indices_val], y_val[bb_indices_val])
+val_acc_ub = (interpr_accuracy_val * transparency_val) + (black_box_acc_upper_bound * (1 - transparency_val))
+
 status = hyb_model.get_status()
 sparsity = hyb_model.get_sparsity()
 print("Expe: dataset = %s, " %dataset_name, "rseed = %d" %rseed, "min_cov=%s" %min_coverage, "policy=%s" %policy, "c=%.3f" %cValue, " done.")
 
-res = [[rseed, bbox_type, beta_value, alpha_value, policy, min_support_param, cValue, status, train_acc, val_acc, test_acc, interpr_accuracy_train, interpr_accuracy_val, interpr_accuracy_test, black_box_accuracy_train, black_box_accuracy_val, black_box_accuracy_test, transparency_train, transparency_val, transparency_test, str(hyb_model), sparsity]]
+res = [[rseed, bbox_type, beta_value, alpha_value, policy, min_support_param, cValue, status, train_acc, val_acc, test_acc, interpr_accuracy_train, interpr_accuracy_val, interpr_accuracy_test, black_box_accuracy_train, black_box_accuracy_val, black_box_accuracy_test, transparency_train, transparency_val, transparency_test, str(hyb_model), sparsity, val_acc_ub]]
 
 # Gather the results for the 5 folds on process 0
 if ccanada_expes:
@@ -144,7 +148,7 @@ if rank == 0 or not ccanada_expes:
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow(['Seed', 'Black Box', 'Beta', 'Alpha', 'Policy', 'Min support', 'Lambda', 'Search status', 'Training accuracy', 'Validation accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Validation accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Validation accuracy (BB)','Test accuracy (BB)', 'Training transparency', 'Validation transparency', 'Test transparency', 'Model', 'Prefix length'])
+        csv_writer.writerow(['Seed', 'Black Box', 'Beta', 'Alpha', 'Policy', 'Min support', 'Lambda', 'Search status', 'Training accuracy', 'Validation accuracy', 'Test accuracy', 'Training accuracy (prefix)', 'Validation accuracy (prefix)', 'Test accuracy (prefix)', 'Training accuracy (BB)', 'Validation accuracy (BB)','Test accuracy (BB)', 'Training transparency', 'Validation transparency', 'Test transparency', 'Model', 'Prefix length', 'Val acc UB'])
         for i in range(len(res)):
             if ccanada_expes:
                 for j in range(len(res[i])):
