@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, Gradien
 import pickle 
 from black_box_models import BlackBox
 
-time_limit = int(20.0 * 3600)
+time_limit = int(45.0 * 3600)
 n_iters = 100
 method = "HybridCORELSPre"
 
@@ -98,9 +98,9 @@ if verbosity:
 # Compute weights for validation set
 val_preds, val_types = hyb_model.predict_with_type(X_val)
 not_captured_indices = np.where(val_types == 0)
-sample_weights_val = np.ones(y_val.shape) #np.zeros(y_val.shape)
-sample_weights_val[not_captured_indices] = np.exp(alpha_value) #1
-sample_weights_val /= np.sum(sample_weights_val)
+sample_weights_val = np.zeros(y_val.shape) # np.ones(y_val.shape)
+sample_weights_val[not_captured_indices] = 1 # np.exp(alpha_value)
+#sample_weights_val /= np.sum(sample_weights_val)
 #BB_X_val = X_val[not_captured_indices]
 #BB_y_val = y_val[not_captured_indices]
 
@@ -144,7 +144,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_4_2_pre_%s_%s_collab_weightedval.csv' %(method, dataset_name) #_proportions
+    fileName = './results/results_4_2_pre_%s_%s_collab.csv' %(method, dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
