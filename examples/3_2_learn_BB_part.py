@@ -21,7 +21,7 @@ else: # for local debug, fixed parameters
     rank = 0
     size = 1
     verbositylist=["progress", "hybrid"]
-    models_folder = "models_part_3"
+    models_folder = "models_part_3_collab"
     verbosity = True
 
 parser = argparse.ArgumentParser(description='Learn BB part of prelearnt prefixes')
@@ -61,7 +61,7 @@ res = []
 
 # => Retrieve the hybrid model with best prefix
 n_iter_param = 10**9
-dict_name = "prefixes_dict/%s_%d_%.4f" %(dataset_name, random_state_value, min_coverage)
+dict_name = "prefixes_dict_collab/%s_%d_%.4f_collab" %(dataset_name, random_state_value, min_coverage)
 with open('%s.pickle' %dict_name, 'rb') as handle:
     best_params = pickle.load(handle)
     min_support_param = best_params['min_support']
@@ -72,7 +72,7 @@ with open('%s.pickle' %dict_name, 'rb') as handle:
 
 beta_value = min([ (1 / X_train.shape[0]) / 2, cValue / 2]) # small enough to only break ties
 
-hyb_model = HybridCORELSPreClassifier.load("./%s/prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s" %(models_folder, dataset_name, random_state_value, min_coverage, cValue, n_iter_param, min_support_param, policy))
+hyb_model = HybridCORELSPreClassifier.load("./%s/prefix_%s_%d_%.3f_%.5f_%d_%.2f_%s_collab" %(models_folder, dataset_name, random_state_value, min_coverage, cValue, n_iter_param, min_support_param, policy))
 
 if verbosity:
     print("Loaded model: ", hyb_model)
@@ -136,7 +136,7 @@ if ccanada_expes:
 
 if rank == 0 or not ccanada_expes:
     # save results
-    fileName = './results/results_HybridCORELSPre_wBB_%s_with_ub_lb.csv' %(dataset_name) #_proportions
+    fileName = './results/results_HybridCORELSPre_wBB_%s_with_ub_lb_collab.csv' %(dataset_name) #_proportions
     import csv
     with open(fileName, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
