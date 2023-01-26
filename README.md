@@ -42,6 +42,11 @@ Folder `paper` contains all the code we used to perform the experiments and plot
 
 Folder `examples` contains example uses of our different methods. The `example_HybridCORELSPre.py` script trains a `HybridCORELSPreClassifier`, displays it and evaluates it on a test set. The `example_HybridCORELSPost_pretrained_black_box.py` (respectively, `example_HybridCORELSPost.py`) script does the same using a `HybridCORELSPostClassifier` with a given pretrained black-box model (respectively, with no given pretrained black-box).
 
+**IMPORTANT: in the `data` folders (within `./examples` or `./paper`) the only dataset ready to use is `compas_mined.csv`.
+For Adult and ACS Employment, the rules must first be mined from the raw datasets before experiments can be run.
+This is due to the large size of the mined datasets, which do not fit on the repository.
+You can easily generate the mined versions for all datasets with `python run_rules_mining.py` within the `paper` folder.**
+
 Hereafter is a minimal running example (requiring the scikit-learn library as a `sklearn.ensemble.RandomForestClassifier()` will be used by default as black-box part) that should be launched from the `examples` folder:
 
 ```python
