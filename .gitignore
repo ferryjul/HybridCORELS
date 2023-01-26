@@ -1,7 +1,7 @@
 .DS_Store
-examples/__pycache__/
-analysis/__pycache__/
-examples/local_config.py
+paper/__pycache__/
+paper/analysis/__pycache__/
+paper/local_config.py
 .eggs/*
 *.o
 *.so

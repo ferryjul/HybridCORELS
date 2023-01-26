@@ -18,9 +18,9 @@ class HybridCORELSPreClassifier:
     c, n_iter, map_type, policy, verbosity, ablation, max_card, min_support : arguments of the CORELS algorithm 
     (see CORELS' documentation for details)
 
-    obj_mode : str, optional (default:'no_collab')
-        If 'no_collab', only maximizes the prefix's accuracy
-        If 'collab', maximizes (prefix accuracy + BB accuracy UB) - i.e., takes care of the inconsistent examples let to the BB part.
+    obj_mode : str, optional (default:'collab')
+        If 'collab', maximizes (prefix accuracy + BB accuracy UB) - i.e., takes care of the inconsistent examples let to the BB part (as in Section 4.4 of our paper).
+        If 'no_collab', only maximizes the prefix's accuracy (as in the Appendix C of our paper)
 
     black_box_classifier: object for the black-box part of the interpretable model.
 
@@ -42,8 +42,8 @@ class HybridCORELSPreClassifier:
     
     _estimator_type = "classifier"
 
-    def __init__(self, black_box_classifier=None, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42, obj_mode='no_collab'):
+    def __init__(self, black_box_classifier=None, c=0.001, n_iter=10**7, map_type="prefix", policy="lower_bound",
+                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, random_state=42, obj_mode='collab'):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -61,9 +61,9 @@ class HybridCORELSPreClassifier:
         np.random.seed(random_state)
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:
-            print("Unspecified black_box_classifier parameter, using sklearn MLPClassifier() for black-box part of the model.")
-            from sklearn.neural_network import MLPClassifier
-            black_box_classifier = MLPClassifier()
+            print("Unspecified black_box_classifier parameter, using sklearn RandomForestClassifier() for black-box part of the model.")
+            from sklearn.ensemble import RandomForestClassifier
+            black_box_classifier = RandomForestClassifier()
         self.BlackBoxClassifier = black_box_classifier
         self.black_box_part = self.BlackBoxClassifier
 
@@ -121,6 +121,8 @@ class HybridCORELSPreClassifier:
         memory_limit: int, maximum memory use (in MB)
         (this memory limit considers only the interpretable part building using the modified CORELS algorithm)
 
+        specialization_auto_tuning: not implemented yet, should not be used
+        
         Returns
         -------
         self : obj
@@ -176,7 +178,8 @@ class HybridCORELSPreClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                #print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                print("Black-Box part accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_accuracy = 1.00            
         # Done!
@@ -240,7 +243,8 @@ class HybridCORELSPreClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                #print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                print("Black-Box part accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_majority = 0.00 # arbitrary
             self.black_box_accuracy = 0.00 # arbitrary            
@@ -291,7 +295,7 @@ class HybridCORELSPreClassifier:
 
         Returns
         -------
-        p : array of shape = [n_samples, 2].
+        p : array of shape = [n_samples].
             The classifications probabilities of the input samples.
         """
         # Predict using the interpretable part of the Hybrid model
@@ -349,7 +353,8 @@ class HybridCORELSPreClassifier:
             self.black_box_accuracy = 0.00
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
-            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.5f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
+            #s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.5f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
+            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.5f)" %(self.black_box_support, self.black_box_accuracy)        
         else:
             s += "Not Fitted Yet!"
             
@@ -452,8 +457,8 @@ class HybridCORELSPostClassifier:
     
     _estimator_type = "classifier"
 
-    def __init__(self, black_box_classifier=None, c=0.01, n_iter=10000, map_type="prefix", policy="lower_bound",
-                 verbosity=["rulelist"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, random_state=42, bb_pretrained=False):
+    def __init__(self, black_box_classifier=None, c=0.001, n_iter=10**7, map_type="prefix", policy="lower_bound",
+                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, random_state=42, bb_pretrained=False):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -473,9 +478,9 @@ class HybridCORELSPostClassifier:
         if black_box_classifier is None:
             if self.bb_pretrained:
                 raise ValueError("Parameters indicate that the black-box is pretrained but it is not provided!")
-            print("Unspecified black_box_classifier parameter, using sklearn MLPClassifier() for black-box part of the model.")
-            from sklearn.neural_network import MLPClassifier
-            black_box_classifier = MLPClassifier()
+            print("Unspecified black_box_classifier parameter, using sklearn RandomForestClassifier() for black-box part of the model.")
+            from sklearn.ensemble import RandomForestClassifier
+            black_box_classifier = RandomForestClassifier()
         self.BlackBoxClassifier = black_box_classifier
         self.black_box_part = self.BlackBoxClassifier
 
@@ -510,7 +515,7 @@ class HybridCORELSPostClassifier:
         else:
             return loaded_object
 
-    def fit(self, X, y, features=[], prediction_name="prediction", specialization_auto_tuning=False, time_limit = None, memory_limit=None):
+    def fit(self, X, y, features=[], prediction_name="prediction", time_limit = None, memory_limit=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -573,7 +578,8 @@ class HybridCORELSPostClassifier:
             y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
-                print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                #print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
+                print("Black-Box part accuracy = ", self.black_box_accuracy)
         else:
             self.black_box_majority = 0.00 # arbitrary
             self.black_box_accuracy = 0.00 # arbitrary           
@@ -627,7 +633,7 @@ class HybridCORELSPostClassifier:
 
         Returns
         -------
-        p : array of shape = [n_samples, 2].
+        p : array of shape = [n_samples].
             The classifications probabilities of the input samples.
         """
         # Predict using the interpretable part of the Hybrid model
@@ -685,7 +691,8 @@ class HybridCORELSPostClassifier:
             self.black_box_accuracy = 0.00
         if self.is_fitted:
             s += "\n" + self.interpretable_part.rl().__str__()
-            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
+            #s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f (majority pred %.3f))" %(self.black_box_support, self.black_box_accuracy, self.black_box_majority)
+            s += "\n    default: " + str(self.black_box_part) + "(support %d, accuracy %.3f)" %(self.black_box_support, self.black_box_accuracy)        
         else:
             s += "Not Fitted Yet!"
             
