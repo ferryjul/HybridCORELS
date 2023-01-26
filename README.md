@@ -39,6 +39,10 @@ Two options are possible:
 Folder `HybridCORELS` contains the code for our module.
 
 Folder `paper` contains all the code we used to perform the experiments and plots presented in our paper.
+It also contains the raw results for our large-scale experiments. All the scripts needed to treat them and generate the Figures are provided.
+Raw results for Section 5.2 (*Exploring the Pre-Black-Box Paradigm*) are provided within `paper/results_part_3_collab.zip`.
+Raw results for Section 5.3 (*Tradeoffs and Comparison with the State of the Art*) are provided within `paper/results_part_4.zip`.
+Raw results for the Appendix C.2 (*HybridCORELSPre,NoCollab: Empirical Evaluation*) are provided within `paper/results_part_3.zip`.
 
 Folder `examples` contains example uses of our different methods. The `example_HybridCORELSPre.py` script trains a `HybridCORELSPreClassifier`, displays it and evaluates it on a test set. The `example_HybridCORELSPost_pretrained_black_box.py` (respectively, `example_HybridCORELSPost.py`) script does the same using a `HybridCORELSPostClassifier` with a given pretrained black-box model (respectively, with no given pretrained black-box).
 
