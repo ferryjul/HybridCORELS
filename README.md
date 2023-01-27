@@ -105,7 +105,7 @@ This minimal example also works replacing `HybridCORELSPreClassifier` by `Hybrid
     * **max_card**: maximum rules cardinality (number of involved attributes) (default: 2). When dealing when pre-mined rules, this parameter should be set to 1
     * **min_support**: minimum support that rules must have in order to be used (default: 0.01)
 
-### Fit Method Hyperparameters
+#### Fit Method Hyperparameters
 
 * **X** : array-like, shape = [n_samples, n_features]
     The training input samples. All features must be binary, and the matrix
@@ -131,9 +131,9 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
 (this memory limit considers only the interpretable part building using the modified CORELS algorithm)
 (default: None (i.e., no limit))
 
-### Other Methods
+#### Other Methods
 
-#### Prediction Methods:
+##### Prediction Methods:
 
 * **predict(self, X)**: Returns the model's predictions for inputs X
     *  **X** : array-like, shape = [n_samples, n_features]
@@ -167,7 +167,7 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
     * y : array-like, shape = [n_samples]
             The input labels. All labels must be binary.
 
-#### Loading/Saving Methods:
+##### Loading/Saving Methods:
 
 * **load(fname)**: *Class Method* to load a previously trained HybridCORELSPreClassifier from a file, using python's pickle module.
     * **fname** : string, File name to load the hybrid model from
@@ -177,7 +177,7 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
     * **fname** : string, File name to save the hybrid model in
     * Example use: `hybrid_model.save("test_save_load")`
 
-#### Others:
+##### Others:
 
 * **refit_black_box(self, X, y, alpha, black_box_classifier)**: To only retrain the black-box part (using a new, provided black-box) of a trained hybrid interpretable model
     * X : array-like, shape = [n_samples, n_features]
@@ -207,10 +207,13 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
 
 #### Classifier Object Hyperparameters
   
-* **black_box_classifier**: user-provided object for the black-box part of the interpretable model - note that this classifier object must follow sklearn naming conventions, and in particular implement the .fit() method with cost-sensitive training (i.e., the `sample_weight` parameter). It does not need to be trained as it will be trained automatically after learning the interpretable part (default: sklearn.ensemble.RandomForestClassifier())
+* **black_box_classifier**: user-provided object for the black-box part of the interpretable model - note that this classifier object must follow sklearn naming conventions. 
+If it is already trained, this must be indicated using the **bb_pretrained** parameter (see hereafter).
+(default: sklearn.ensemble.RandomForestClassifier())
 
 * **bb_pretrained** : boolean indicating whether the given **black_box_classifier** is already trained or not. (default=False)
-        If False, the BB is trained here. If True, we check whether it is effectively fitted
+        If False, the BB will be trained while calling the `fit` method. 
+        If True, we check whether it is effectively fitted.
 
 * **beta**: float, regularization hyperparameter weighting transparency in the objective function. When using the min_coverage hard constraint,
         we recommend to set beta < 1/n_samples <= c (default: 0.0)
@@ -227,7 +230,7 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
     * **max_card**: maximum rules cardinality (number of involved attributes) (default: 2). When dealing when pre-mined rules, this parameter should be set to 1
     * **min_support**: minimum support that rules must have in order to be used (default: 0.01)
 
-### Fit Method Hyperparameters
+#### Fit Method Hyperparameters
 
 * **X** : array-like, shape = [n_samples, n_features]
     The training input samples. All features must be binary, and the matrix
@@ -253,9 +256,9 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
 (this memory limit considers only the interpretable part building using the modified CORELS algorithm)
 (default: None (i.e., no limit))
 
-### Other Methods
+#### Other Methods
 
-#### Prediction Methods:
+##### Prediction Methods:
 
 * **predict(self, X)**: Returns the model's predictions for inputs X
     *  **X** : array-like, shape = [n_samples, n_features]
@@ -289,7 +292,7 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
     * y : array-like, shape = [n_samples]
             The input labels. All labels must be binary.
 
-#### Loading/Saving Methods:
+##### Loading/Saving Methods:
 
 * **load(fname)**: *Class Method* to load a previously trained HybridCORELSPostClassifier from a file, using python's pickle module.
     * **fname** : string, File name to load the hybrid model from
@@ -299,7 +302,7 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
     * **fname** : string, File name to save the hybrid model in
     * Example use: `hybrid_model.save("test_save_load")`
 
-#### Others:
+##### Others:
 
 * **__str__(self)**: Get a textual representation of the hybrid interpretable model
 
