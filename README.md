@@ -5,7 +5,7 @@ Relevant paper: [TODO]
 **HybridCORELS** is a Python module for learning Hybrid Rule-Based/Black-Box models, using modified versions of the CORELS algorithm for the rule-based part learning.
 It is based on the CORELS Python binding, [PyCORELS](https://github.com/corels/pycorels).
 
-Both our proposed algorithms provide **optimality guarantees** and allow **direct control of the desired transparency level** (propotion of examples classified by the interpretable part of the hybrid interpretable model).
+Both our proposed algorithms provide **optimality guarantees** and allow **direct control of the desired transparency level** (proportion of examples classified by the interpretable part of the hybrid interpretable model).
 
 If you encounter any issue when using this module please either open a ticket here or email `jferry@laas.fr`.
 
