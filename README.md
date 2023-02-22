@@ -13,7 +13,7 @@ If you encounter any issue when using this module please either open a ticket he
 
 Hybrid interpretable models are predictive models formed by an interpretable and a black-box part. The interpretable part makes predictions, and the black-box handles the examples not captured by the later. Hereafter are two examples of such models learnt on the exact same data using the two methods proposed within this module:
 
-<p align = "center"><img src = "./example_HybridCORELSPre_COMPAS_0.8.png"></p><p align = "center">
+<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/example_HybridCORELSPre_COMPAS_0.8.png?raw=true"></p><p align = "center">
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPre (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (example_HybridCORELSPre.py script).
 </p>
 
