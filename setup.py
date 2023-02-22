@@ -2,7 +2,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 import os
 import sys
-from Cython.Build import cythonize
+#from Cython.Build import cythonize # uncomment to recythonize
 
 
 class build_numpy(build_ext):
@@ -30,8 +30,8 @@ def install(gmp):
     for i in range(len(sources)):
         sources[i] = source_dir + sources[i]
     
-    #sources.append('corels/_corels.cpp')
-    sources.append(pyx_file)
+    sources.append('HybridCORELS/_prefix_corels.cpp') # comment to recythonize
+    #sources.append(pyx_file) # uncomment to recythonize
     sources.append('HybridCORELS/src/utils.cpp')
 
     cpp_args = ['-Wall', '-O3', '-std=c++11']
@@ -57,7 +57,8 @@ def install(gmp):
                 extra_compile_args = cpp_args)
 
     extensions = [extension]
-    extensions = cythonize(extensions)
+    #extensions = cythonize(extensions) # uncomment to recythonize
+    #extensions[0].sources.append(pyx_file)
 
     numpy_version = 'numpy'
 
