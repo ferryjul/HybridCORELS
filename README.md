@@ -17,7 +17,7 @@ Hybrid interpretable models are predictive models formed by an interpretable and
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPre (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (example_HybridCORELSPre.py script).
 </p>
 
-<p align = "center"><img src = "[./example_HybridCORELSPost_COMPAS_0.8.png](https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/example_HybridCORELSPost_COMPAS_0.8.png)"></p><p align = "center">
+<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/example_HybridCORELSPost_COMPAS_0.8.png"></p><p align = "center">
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPost (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (example_HybridCORELSPost.py script).
 </p>
 
