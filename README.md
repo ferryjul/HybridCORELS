@@ -8,6 +8,7 @@ It is based on the CORELS Python binding, [PyCORELS](https://github.com/corels/p
 Both our proposed algorithms provide **optimality guarantees** and allow **direct control of the desired transparency level** (proportion of examples classified by the interpretable part of the hybrid interpretable model).
 
 If you encounter any issue when using this module please either open a ticket here or email `jferry@laas.fr`.
+This package is joint work between Julien Ferry, Gabriel Laberge and Ulrich Aïvodji.
 
 ## Learning Optimal Hybrid Interpretable Models with Fixed Transparency Level
 
@@ -17,7 +18,7 @@ Hybrid interpretable models are predictive models formed by an interpretable and
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPre (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (example_HybridCORELSPre.py script).
 </p>
 
-<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/example_HybridCORELSPost_COMPAS_0.8.png"></p><p align = "center">
+<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/example_HybridCORELSPost_COMPAS_0.8.png?raw=true"></p><p align = "center">
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPost (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (example_HybridCORELSPost.py script).
 </p>
 
@@ -72,7 +73,7 @@ print(hyb_model)
 ```
 
 Expected output:
-<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/minimal_example_HybridCORELSPre_COMPAS_0.8.png"></p><p align = "center">
+<p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/minimal_example_HybridCORELSPre_COMPAS_0.8.png?raw=true"></p><p align = "center">
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPre (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (minimal running example provided in this README).
 </p>
 
