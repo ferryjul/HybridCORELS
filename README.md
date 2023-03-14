@@ -1,6 +1,6 @@
 # HybridCORELS, a Python Module for Learning Optimal Hybrid Interpretable (Rule-Based) & Black Box models
 
-Relevant paper (preprint available on HAL: https://hal.science/hal-04010590):
+Relevant paper (preprint available on arXiv: https://arxiv.org/abs/2303.04437):
 
 ``` 
 Learning Hybrid Interpretable Models: Theory, Taxonomy, and Methods. Julien Ferry, Gabriel Laberge, Ulrich Aïvodji.
