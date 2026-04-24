@@ -237,7 +237,7 @@ class PrefixCorelsPreClassifier:
         
         rl.prediction_name = prediction_name
 
-        allowed_verbosities = ["rulelist", "rule", "label", "samples", "progress", "loud", "mine", "minor", "hybrid"]
+        allowed_verbosities = ["rulelist", "rule", "label", "samples", "progress", "loud", "mine", "minor", "hybrid", "hybrid_coverages"]
         for v in self.verbosity:
             if not isinstance(v, str):
                 raise TypeError("Verbosity flags must be strings, got: " + str(v))
@@ -815,7 +815,7 @@ class PrefixCorelsPostClassifier:
         
         rl.prediction_name = prediction_name
 
-        allowed_verbosities = ["rulelist", "rule", "label", "samples", "progress", "loud", "mine", "minor", "hybrid"]
+        allowed_verbosities = ["rulelist", "rule", "label", "samples", "progress", "loud", "mine", "minor", "hybrid", "hybrid_coverages"]
         for v in self.verbosity:
             if not isinstance(v, str):
                 raise TypeError("Verbosity flags must be strings, got: " + str(v))

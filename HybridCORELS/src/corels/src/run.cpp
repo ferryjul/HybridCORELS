@@ -31,7 +31,7 @@ int run_corels_begin(double c, char* vstring, int curiosity_policy,
     
     verbosity.clear();
 
-    const char *voptions = "rule|label|minor|samples|progress|loud|hybrid";
+    const char *voptions = "rule|label|minor|samples|progress|loud|hybrid|hybrid_coverages";
 
     Grules = rules;
     Glabels = labels;

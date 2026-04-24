@@ -137,9 +137,9 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
         logger->incObjNum();
         bool support_ok = ((double)num_not_captured/(double)nsamples) < (1.0 - tree->min_coverage());
         bool disparity_ok = true;
+        double min_group_coverage = 1.0;
+        double max_group_coverage = 0.0;
         if (n_sensitive_groups > 0) {
-            double min_group_coverage = 1.0;
-            double max_group_coverage = 0.0;
             for (int g = 0; g < n_sensitive_groups; g++) {
                 int not_captured_in_group = 0;
                 int group_size = sensitive_groups[g].support;
@@ -196,6 +196,24 @@ void evaluate_children(CacheTree* tree, Node* parent, tracking_vector<unsigned s
             if (verbosity.count("progress")) {
                 printf("min(objective): %1.5f -> %1.5f, length: %d, cache size: %zu, lower bound: %1.5f\n",
                    tree->min_objective(), objective, len_prefix, tree->num_nodes(), lower_bound);
+            }
+            if (verbosity.count("hybrid_coverages")) {
+                printf("new current best solution: objective=%1.5f, length=%d\n", objective, len_prefix);
+                if (n_sensitive_groups > 0) {
+                    double disparity = max_group_coverage - min_group_coverage;
+                    printf("  per-group coverages:");
+                    for (int g = 0; g < n_sensitive_groups; g++) {
+                        int not_captured_in_group = 0;
+                        int group_size = sensitive_groups[g].support;
+                        rule_vand(not_captured_sensitive, not_captured, sensitive_groups[g].truthtable, nsamples, &not_captured_in_group);
+                        double group_coverage = 0.0;
+                        if (group_size > 0) {
+                            group_coverage = 1.0 - ((double) not_captured_in_group / (double) group_size);
+                        }
+                        printf(" g%d=%1.5f", g, group_coverage);
+                    }
+                    printf(" | min=%1.5f max=%1.5f disparity=%1.5f\n", min_group_coverage, max_group_coverage, disparity);
+                }
             }
             logger->setTreeMinObj(objective);
             tree->update_min_objective(objective);
