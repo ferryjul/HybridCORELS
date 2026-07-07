@@ -100,8 +100,7 @@ This minimal example also works replacing `HybridCORELSPreClassifier` by `Hybrid
 
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
 
-* **max_length** : int, optional (default=1000000, i.e. no limit)
-        Maximum number of decision rules in the built rule list.
+* **max_length** : int (default=1000000, i.e. no limit), maximum number of decision rules in the built prefix.
 
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
@@ -228,8 +227,7 @@ If it is already trained, this must be indicated using the **bb_pretrained** par
 
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
 
-* **max_length** : int, optional (default=1000000, i.e. no limit)
-        Maximum number of decision rules in the built rule list.
+* **max_length** : int (default=1000000, i.e. no limit), maximum number of decision rules in the built prefix.
 
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
