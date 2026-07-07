@@ -100,6 +100,9 @@ This minimal example also works replacing `HybridCORELSPreClassifier` by `Hybrid
 
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
 
+* **max_length** : int, optional (default=1000000, i.e. no limit)
+        Maximum number of decision rules in the built rule list.
+
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
     * **n_iter**: maximum number of nodes in the prefix tree (default: 10**7) - because we now offer precise control over the memory use we suggest to set this parameter to a very high value and control the memory use using the `memory_limit` argument of the `.fit()` method
@@ -224,6 +227,9 @@ If it is already trained, this must be indicated using the **bb_pretrained** par
         we recommend to set beta < 1/n_samples <= c (default: 0.0)
 
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
+
+* **max_length** : int, optional (default=1000000, i.e. no limit)
+        Maximum number of decision rules in the built rule list.
 
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
