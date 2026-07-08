@@ -306,7 +306,7 @@ class HybridCORELSPreClassifier:
         black_box_probas : array-like, shape = [n_samples, n_classes], optional (default=None)
             If provided, these are the classification probabilities of the black-box part of the model on the input samples X.
             If not provided, the black-box part will be used to predict on X.
-            Note that if the black-box part is trained on different features than those of X, this needs to be provided,
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, as otherwise an error will likely be raised or the predictions will be wrong.
 
         Returns
         -------
