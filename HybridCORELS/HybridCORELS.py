@@ -626,7 +626,7 @@ class HybridCORELSPostClassifier:
         # Done!
         self.is_fitted = True
         if "hybrid" in self.verbosity:
-            print("Training accuracy overall = ", self.score(X, y))
+            print("Training accuracy overall = ", self.score(X, y, black_box_predictions=black_box_predictions))
 
         return self
 
