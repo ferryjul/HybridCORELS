@@ -306,7 +306,7 @@ class HybridCORELSPreClassifier:
         black_box_probas : array-like, shape = [n_samples, n_classes], optional (default=None)
             If provided, these are the classification probabilities of the black-box part of the model on the input samples X.
             If not provided, the black-box part will be used to predict on X.
-            Note that if the black-box part is trained on different features than those of X, this needs to be provided, as otherwise an error will likely be raised or the predictions will be wrong.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
 
         Returns
         -------
@@ -546,7 +546,7 @@ class HybridCORELSPostClassifier:
         else:
             return loaded_object
 
-    def fit(self, X, y, features=[], prediction_name="prediction", time_limit = None, memory_limit=None):
+    def fit(self, X, y, features=[], prediction_name="prediction", time_limit = None, memory_limit=None, black_box_predictions=None):
         """
         Build a CORELS classifier from the training set (X, y).
 
@@ -567,6 +567,11 @@ class HybridCORELSPostClassifier:
         prediction_name : string, optional(default="prediction")
             The name of the feature that is being predicted.
 
+        black_box_predictions: array-like, shape = [n_samples], optional (default=None)
+            Predictions of the black-box part of the model on the input samples X.
+            If bb_pretrained is True and the black-box is trained on different features than those of X, 
+            this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
+
         time_limit : int, maximum number of seconds allowed for the model building 
         (this timeout considers only the interpretable part building using the modified CORELS algorithm)
         Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
@@ -580,13 +585,18 @@ class HybridCORELSPostClassifier:
         """
         # 1) (if not pretrained) Fit the black-box part of the Hybrid model
         if not self.bb_pretrained:
+            if black_box_predictions is not None:
+                raise ValueError("black_box_predictions parameter should not be provided when the black-box is not pretrained.")
             if "hybrid" in self.verbosity:
                 print("Training the BB part on the entire dataset")
             self.black_box_part.fit(X, y)
         else:
             if "hybrid" in self.verbosity:
                 print("Not retraining BB.")
-        bb_errors = np.asarray(self.black_box_part.predict(X) != y).astype(int)
+        if black_box_predictions is None:
+            black_box_predictions = self.black_box_part.predict(X)
+
+        bb_errors = np.asarray(black_box_predictions != y).astype(int)
         #print("python computed bb error rate = ", np.mean(bb_errors))
         # 2) Fit the interpretable part of the model
         if "hybrid" in self.verbosity:
@@ -601,12 +611,10 @@ class HybridCORELSPostClassifier:
             print("Interpretable part accuracy = ", np.mean(interpretable_predictions[captured_indices] == y[captured_indices]))
 
         # Finally set the black-box metrics
-        X_not_captured = X[not_captured_indices]
-        y_not_captured = y[not_captured_indices]
         self.black_box_support = not_captured_indices[0].size # Proportion of training examples falling into the black-box part
         if not_captured_indices[0].size > 0:
-            self.black_box_accuracy = self.black_box_part.score(X_not_captured, y_not_captured) # Black-Box accuracy on these examples
-            y_not_captured_unique_counts = np.unique(y_not_captured, return_counts=True)[1]
+            self.black_box_accuracy = np.mean(y[not_captured_indices] != black_box_predictions[not_captured_indices]) # Black-Box accuracy on these examples
+            y_not_captured_unique_counts = np.unique(y[not_captured_indices], return_counts=True)[1]
             self.black_box_majority = max(y_not_captured_unique_counts)/sum(y_not_captured_unique_counts)
             if "hybrid" in self.verbosity:
                 #print("majority pred = ", self.black_box_majority, "BB accuracy = ", self.black_box_accuracy)
