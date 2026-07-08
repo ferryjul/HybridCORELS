@@ -142,37 +142,53 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
 
 ##### Prediction Methods:
 
-* **predict(self, X)**: Returns the model's predictions for inputs X
+* **predict(self, X, black_box_predictions=None)**: Returns the model's predictions for inputs X
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * array of shape = [n_samples]
 
-* **predict_proba(self, X)**: Returns the model's class probabilities for inputs X (computed using each rule's training support set accuracy)
+* **predict_proba(self, X, black_box_probas=None)**: Returns the model's class probabilities for inputs X (computed using each rule's training support set accuracy)
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_probas** : array-like, shape = [n_samples, n_classes], optional (default=None)
+            If provided, these are the classification probabilities of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * array of shape = [n_samples]
 
-* **predict_with_type(self, X)**: Returns the model's predictions for inputs X, along with a boolean (one per example) indicating whether the example was classified by the interpretable part of the model or not
+* **predict_with_type(self, X, black_box_predictions=None)**: Returns the model's predictions for inputs X, along with a boolean (one per example) indicating whether the example was classified by the interpretable part of the model or not
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * p, t : array of shape = [n_samples], array of shape = [n_samples]
             * p: The classifications of the input samples
             * t: The part of the Hybrid model which decided for the classification (1: interpretable part, 0: black-box part)
 
-* **score(self, X, y)**: Computes the hybrid interpretable model's accuracy on the provided dataset
+* **score(self, X, y, black_box_predictions=None)**: Computes the hybrid interpretable model's accuracy on the provided dataset
     * X : array-like, shape = [n_samples, n_features] OR shape = [n_samples]
             The input samples, or the sample predictions. All features must be binary.
     * y : array-like, shape = [n_samples]
             The input labels. All labels must be binary.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
 
 ##### Loading/Saving Methods:
 
@@ -256,6 +272,11 @@ If it is already trained, this must be indicated using the **bb_pretrained** par
 * **prediction_name** : string, optional(default="prediction")
     The name of the feature that is being predicted.
 
+* **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+    Predictions of the black-box part of the model on the input samples X.
+    If bb_pretrained is True and the black-box is trained on different features than those of X, 
+    this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
+
 * **time_limit** : int, maximum number of seconds allowed for the model building 
 (this timeout considers only the interpretable part building using the modified CORELS algorithm).
 Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
@@ -269,37 +290,53 @@ Note that this specifies the CPU time and NOT THE WALL-CLOCK TIME
 
 ##### Prediction Methods:
 
-* **predict(self, X)**: Returns the model's predictions for inputs X
+* **predict(self, X, black_box_predictions=None)**: Returns the model's predictions for inputs X
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * array of shape = [n_samples]
 
-* **predict_proba(self, X)**: Returns the model's class probabilities for inputs X (computed using each rule's training support set accuracy)
+* **predict_proba(self, X, black_box_probas=None)**: Returns the model's class probabilities for inputs X (computed using each rule's training support set accuracy)
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_probas** : array-like, shape = [n_samples, n_classes], optional (default=None)
+            If provided, these are the classification probabilities of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * array of shape = [n_samples]
 
-* **predict_with_type(self, X)**: Returns the model's predictions for inputs X, along with a boolean (one per example) indicating whether the example was classified by the interpretable part of the model or not
+* **predict_with_type(self, X, black_box_predictions=None)**: Returns the model's predictions for inputs X, along with a boolean (one per example) indicating whether the example was classified by the interpretable part of the model or not
     *  **X** : array-like, shape = [n_samples, n_features]
             The training input samples. All features must be binary, and the matrix
             is internally converted to dtype=np.uint8. The features must be the same
             as those of the data used to train the model.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
     * Returns: 
         * p, t : array of shape = [n_samples], array of shape = [n_samples]
             * p: The classifications of the input samples
             * t: The part of the Hybrid model which decided for the classification (1: interpretable part, 0: black-box part)
 
-* **score(self, X, y)**: Computes the hybrid interpretable model's accuracy on the provided dataset
+* **score(self, X, y, black_box_predictions=None)**: Computes the hybrid interpretable model's accuracy on the provided dataset
     * X : array-like, shape = [n_samples, n_features] OR shape = [n_samples]
             The input samples, or the sample predictions. All features must be binary.
     * y : array-like, shape = [n_samples]
             The input labels. All labels must be binary.
+    * **black_box_predictions** : array-like, shape = [n_samples], optional (default=None)
+            If provided, these are the predictions of the black-box part of the model on the input samples X.
+            If not provided, the black-box part will be used to predict on X.
+            Note that if the black-box part is trained on different features than those of X, this needs to be provided, otherwise an error will likely be raised or the predictions will be wrong.
 
 ##### Loading/Saving Methods:
 
