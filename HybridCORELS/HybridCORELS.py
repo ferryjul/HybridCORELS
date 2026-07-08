@@ -68,8 +68,7 @@ class HybridCORELSPreClassifier:
             print("Unspecified black_box_classifier parameter, using sklearn RandomForestClassifier() for black-box part of the model.")
             from sklearn.ensemble import RandomForestClassifier
             black_box_classifier = RandomForestClassifier()
-        self.BlackBoxClassifier = black_box_classifier
-        self.black_box_part = self.BlackBoxClassifier
+        self.black_box_part = black_box_classifier
 
         # Done!
         self.is_fitted = False
@@ -489,8 +488,7 @@ class HybridCORELSPostClassifier:
             print("Unspecified black_box_classifier parameter, using sklearn RandomForestClassifier() for black-box part of the model.")
             from sklearn.ensemble import RandomForestClassifier
             black_box_classifier = RandomForestClassifier()
-        self.BlackBoxClassifier = black_box_classifier
-        self.black_box_part = self.BlackBoxClassifier
+        self.black_box_part = black_box_classifier
 
         # If parameters indicate that BB is pretrained, verify it now
         if self.bb_pretrained:
