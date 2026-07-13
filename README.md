@@ -76,6 +76,23 @@ hyb_model.fit(X, y, features=features, prediction_name=prediction, time_limit=60
 print(hyb_model)
 ```
 
+By default, the rule miner only considers positive features. To also mine their
+negations, set `allow_negations=True` when creating the classifier:
+
+```python
+hyb_model = HybridCORELSPreClassifier(
+    min_coverage=0.8,
+    max_card=2,
+    allow_negations=True,
+)
+```
+
+For example, a binary feature named `age_high` may then be used either as
+`age_high` or as `age_high-not`. Negated antecedents can also be included in
+higher-cardinality conjunctions. The option is available for both
+`HybridCORELSPreClassifier` and `HybridCORELSPostClassifier`, and defaults to
+`False` for backward compatibility.
+
 Expected output:
 <p align = "center"><img src = "https://github.com/ferryjul/HybridCORELS/blob/4f8762ab219789371a2ae1d5501cbe614b9c8162/minimal_example_HybridCORELSPre_COMPAS_0.8.png?raw=true"></p><p align = "center">
 Example Hybrid Model learnt on the COMPAS dataset using HybridCORELSPre (minimum desired transparency 0.8) along with a standard sklearn RandomForest as black-box model (minimal running example provided in this README).
@@ -101,6 +118,8 @@ This minimal example also works replacing `HybridCORELSPreClassifier` by `Hybrid
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
 
 * **max_length** : int (default=1000000, i.e. no limit), maximum number of decision rules in the built prefix.
+
+* **allow_negations**: whether the rule miner should consider the negation of each binary feature in addition to the positive feature (default: `False`). Negated features are displayed with the `-not` suffix and may be used in conjunctions up to `max_card`.
 
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
@@ -244,6 +263,8 @@ If it is already trained, this must be indicated using the **bb_pretrained** par
 * **min_coverage**: float (between 0.0 and 1.0), minimum acceptable value for the hybrid model transparency (proportion of examples classified by the interpretable part of the model) (default 0.0 (i.e., no constraint))
 
 * **max_length** : int (default=1000000, i.e. no limit), maximum number of decision rules in the built prefix.
+
+* **allow_negations**: whether the rule miner should consider the negation of each binary feature in addition to the positive feature (default: `False`). Negated features are displayed with the `-not` suffix and may be used in conjunctions up to `max_card`.
 
 * Arguments of the original CORELS algorithm (see [PyCORELS documentation](https://github.com/corels/pycorels/blob/master/corels/corels.py) for more details)
     * **c**: regularization coefficient for sparsity ($\lambda$) (default: 0.001)
