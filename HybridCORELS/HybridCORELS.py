@@ -35,6 +35,9 @@ class HybridCORELSPreClassifier:
 
     max_length : int, optional (default=1000000, i.e. no limit)
         Maximum number of decision rules in the built rule list.
+
+    allow_negations : bool, optional (default=False)
+        Whether to mine negated features in addition to positive features.
         
     References
     ----------
@@ -46,7 +49,7 @@ class HybridCORELSPreClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, black_box_classifier=None, c=0.001, n_iter=10**7, map_type="prefix", policy="lower_bound",
-                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, max_length=1000000, random_state=42, obj_mode='collab'):
+                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, alpha=0.0, min_coverage=0.0, max_length=1000000, random_state=42, obj_mode='collab', allow_negations=False):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -61,7 +64,8 @@ class HybridCORELSPreClassifier:
         self.alpha = alpha
         self.min_coverage=min_coverage
         self.obj_mode = obj_mode
-        self.interpretable_part = PrefixCorelsPreClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage, self.obj_mode, self.max_length)
+        self.allow_negations = allow_negations
+        self.interpretable_part = PrefixCorelsPreClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage, self.obj_mode, self.max_length, self.allow_negations)
         np.random.seed(random_state)
         # Creation of the black-box part of the Hybrid model
         if black_box_classifier is None:
@@ -479,6 +483,9 @@ class HybridCORELSPostClassifier:
     max_length : int, optional (default=1000000, i.e. no limit)
         Maximum number of decision rules in the built rule list.
 
+    allow_negations : bool, optional (default=False)
+        Whether to mine negated features in addition to positive features.
+
     References
     ----------
     Original CORELS algorithm: Elaine Angelino, Nicholas Larus-Stone, Daniel Alabi, Margo Seltzer, and Cynthia Rudin.
@@ -489,7 +496,7 @@ class HybridCORELSPostClassifier:
     _estimator_type = "classifier"
 
     def __init__(self, black_box_classifier=None, c=0.001, n_iter=10**7, map_type="prefix", policy="lower_bound",
-                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, max_length=1000000, random_state=42, bb_pretrained=False):
+                 verbosity=["hybrid"], ablation=0, max_card=2, min_support=0.01, beta=0.0, min_coverage=0.0, max_length=1000000, random_state=42, bb_pretrained=False, allow_negations=False):
         # Retrieve parameters related to CORELS, and creation of the interpretable part of the Hybrid model
         self.c = c
         self.n_iter = n_iter
@@ -503,7 +510,8 @@ class HybridCORELSPostClassifier:
         self.beta = beta
         self.min_coverage=min_coverage
         self.bb_pretrained=bb_pretrained
-        self.interpretable_part = PrefixCorelsPostClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage, self.max_length)
+        self.allow_negations = allow_negations
+        self.interpretable_part = PrefixCorelsPostClassifier(self.c, self.n_iter, self.map_type, self.policy, self.verbosity, self.ablation, self.max_card, self.min_support, self.beta, self.min_coverage, self.max_length, self.allow_negations)
         np.random.seed(random_state)
         
         # Creation of the black-box part of the Hybrid model
